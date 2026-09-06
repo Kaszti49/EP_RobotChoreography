@@ -1,0 +1,135 @@
+// =====================================================================
+//  K3 -- PWM -> SEBESSEG JELLEGGORBE, KEREKENKENT ES IRANYONKENT
+//  Show-koreografia: 4. meres a hat robotbol mindegyiken
+// =====================================================================
+//
+//  MIT MER?
+//    Hany impulzus/masodperccel forog a kerek adott PWM-nel. Nyolc PWM-
+//    erteken meri, kulon a bal es a jobb kereken, elore es hatra is.
+//    A vegen a program MAGA illeszt egyenest a pontokra, es kiirja a ket
+//    szamot, ami a show-vezerlesbe kell.
+//
+//  MI EZ A KET SZAM?
+//    A motor jo kozelitessel linearis:   PWM = HOLTSAV + KFF * sebesseg
+//      HOLTSAV : ahol elindul (a K0 ezt mar merte -- itt ellenorzod)
+//      KFF     : mennyi PWM kell 1 impulzus/s sebesseghez
+//    Ez a FEED-FORWARD: a vezerles ebbol tudja, MENNYIT kell adnia, mielott
+//    barmilyen hibat latna. A PD-nek igy csak a maradek par szazalekot kell
+//    korrigalnia -- ettol lesz sima es egyforma a hat robot mozgasa.
+//    Feed-forward nelkul a PD egyedul is mukodne, de mindig kesne, es
+//    minden robot maskepp kesne.
+//
+//  ELOKESZULET
+//    - A SHOW PADLOJAN, kb. 2 m szabad hely elore (a robot elindul!).
+//    - Friss/teli akku. A jelleggorbe akkufeszultseg-fuggo -- ugyanazzal az
+//      akku-allapottal merj, amivel a show megy majd.
+//    - A robot a meres alatt kanyarodhat, ez normalis (nincs szabalyzas).
+//
+//  HASZNALAT
+//    Start -> kb. 8 mp elore, 2 mp szunet, kb. 8 mp hatra -> eredmeny.
+// =====================================================================
+
+// --------------------- beallitasok ---------------------
+const int PWM_DB = 8;
+int pwmLista[PWM_DB] = { 60, 80, 100, 120, 150, 180, 210, 240 };
+int BEALL_MS = 400;    // ennyi ideig gyorsul be a PWM-re
+int MERES_MS = 500;    // ezen az ablakon merjuk a sebesseget
+
+// --------------------- eredmenyek ---------------------
+float sebBalE[PWM_DB],  sebJobbE[PWM_DB];    // elore, impulzus/s
+float sebBalH[PWM_DB],  sebJobbH[PWM_DB];    // hatra,  impulzus/s
+
+// --------------------- egy sopres ---------------------
+// irany: +1 = elore, -1 = hatra
+void sopres(int irany, float kiBal[], float kiJobb[]) {
+  for (int i = 0; i < PWM_DB; i++) {
+    int p = pwmLista[i];
+
+    motor(irany * p, irany * p);
+    varj(BEALL_MS);                       // beall a sebesseg
+
+    long b0 = encBal, j0 = encJobb;
+    unsigned long t0 = millis();
+    varj(MERES_MS);                       // ezen az ablakon merunk
+    unsigned long dt = millis() - t0;
+    long db = encBal - b0, dj = encJobb - j0;
+
+    if (db < 0) db = -db;
+    if (dj < 0) dj = -dj;
+
+    kiBal[i]  = (float)db * 1000.0 / (float)dt;
+    kiJobb[i] = (float)dj * 1000.0 / (float)dt;
+
+    uzenet("PWM " + String(p) + " -> bal " + String(kiBal[i], 0)
+           + " imp/s,  jobb " + String(kiJobb[i], 0) + " imp/s");
+  }
+  motor(0, 0);
+  varj(600);
+}
+
+// --------------------- egyenes-illesztes ---------------------
+// y = a + b*x  (x = sebesseg imp/s, y = PWM). Csak a mozgo pontokat hasznaljuk.
+// a -> holtsav,  b -> KFF
+void illesztes(float seb[], float &a, float &b) {
+  float n = 0, sx = 0, sy = 0, sxy = 0, sxx = 0;
+  for (int i = 0; i < PWM_DB; i++) {
+    if (seb[i] < 30) continue;                 // meg all vagy csak rezeg: nem hasznalhato
+    float x = seb[i], y = (float)pwmLista[i];
+    n++; sx += x; sy += y; sxy += x * y; sxx += x * x;
+  }
+  if (n < 3) { a = 0; b = 0; return; }         // tul keves pont
+  float nevezo = n * sxx - sx * sx;
+  if (nevezo < 0.001) { a = 0; b = 0; return; }
+  b = (n * sxy - sx * sy) / nevezo;
+  a = (sy - b * sx) / n;
+}
+
+void indulas() {
+  uzenet("K3 -- PWM/sebesseg jelleggorbe. Kell kb. 2 m szabad hely!");
+  uzenet("Indulas 3 mp mulva, NE nyulj a robothoz.");
+  varj(3000);
+
+  enkoderNullaz();
+  uzenet("--- ELORE ---");
+  sopres(+1, sebBalE, sebJobbE);
+  varj(2000);
+  uzenet("--- HATRA ---");
+  sopres(-1, sebBalH, sebJobbH);
+
+  // iranyonkenti illesztes
+  float aBE, bBE, aJE, bJE, aBH, bBH, aJH, bJH;
+  illesztes(sebBalE,  aBE, bBE);
+  illesztes(sebJobbE, aJE, bJE);
+  illesztes(sebBalH,  aBH, bBH);
+  illesztes(sebJobbH, aJH, bJH);
+
+  // a show-vezerles kerekenkent egy szammal dolgozik: a ket irany atlaga
+  float holtBal  = (aBE + aBH) / 2.0;
+  float holtJobb = (aJE + aJH) / 2.0;
+  float kffBal   = (bBE + bBH) / 2.0;
+  float kffJobb  = (bJE + bJH) / 2.0;
+
+  // legnagyobb biztonsagos sebesseg: a leglassabb kerek/irany a csucs-PWM-en
+  float vmax = sebBalE[PWM_DB - 1];
+  if (sebJobbE[PWM_DB - 1] < vmax) vmax = sebJobbE[PWM_DB - 1];
+  if (sebBalH[PWM_DB - 1]  < vmax) vmax = sebBalH[PWM_DB - 1];
+  if (sebJobbH[PWM_DB - 1] < vmax) vmax = sebJobbH[PWM_DB - 1];
+
+  motor(0, 0);
+  uzenet("=========== K3 EREDMENY ===========");
+  uzenet("--> KFF a tablazatba:     { " + String(kffBal, 5) + ", " + String(kffJobb, 5) + " }");
+  uzenet("--> HOLTSAV (illesztett): { " + String(holtBal, 0) + ", " + String(holtJobb, 0) + " }");
+  uzenet("    (hasonlitsd ossze a K0 holtsav-ertekeivel: 15 PWM-en belul legyenek!)");
+  uzenet("meg PWM 240-nel: " + String(vmax, 0) + " imp/s a leglassabb kerek");
+  uzenet("--> VMAX_IMPS a tablazatba (65 %): " + String(vmax * 0.65, 0));
+  uzenet("    A show SOHA ne menjen ennel gyorsabban -- a maradek 35 % a PD-e,");
+  uzenet("    hogy legyen mivel korrigalnia. Kifutott motorral nincs szabalyzas.");
+  if (kffBal < 0.0001 || kffJobb < 0.0001)
+    uzenet("HIBA: nem sikerult az illesztes. Forgott egyaltalan a kerek? Van akku?");
+  uzenet("===================================");
+}
+
+void vezerles() {
+  // Minden az indulas()-ban tortenik.
+  motor(0, 0);
+}

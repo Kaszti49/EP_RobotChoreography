@@ -1,0 +1,66 @@
+// =====================================================================
+//  2. FELADAT -- SZENZORFÚZIÓ: hol a vonal?
+// =====================================================================
+//
+//  A robot alján 5 infravörös szenzor van egy sorban (balról jobbra:
+//  szenzor[0] ... szenzor[4]). Mindegyik egy számot ad 0 és 4095 között:
+//  a FEHÉR felület NAGY számot ad, a FEKETE vonal KISEBBET.
+//
+//  Az 5 számból egyetlen számot kell csinálni: HOL VAN A VONAL?
+//      -2 = bal szélen     0 = középen     +2 = jobb szélen
+//  Ezt hívják szenzorfúziónak.
+//
+//  Amit használhatsz:
+//     szenzor[0..4]           a nyers értékek (nézd a műszerfalon!)
+//     motor(bal, jobb)        -255..255
+//     uzenet("...")           kiírás a weboldalra
+//
+//  FELADAT: 1) állítsd be a küszöböt a műszerfal alapján
+//           2) kövesd a vonalat úgy, hogy a robot ne essen le róla
+//           3) mi történjen, ha egyik szenzor sem látja a vonalat?
+//  NEHEZEBB: ne csak "látja / nem látja" legyen, hanem súlyozd azzal,
+//            MENNYIRE látja (minél sötétebb, annál nagyobb súly).
+// =====================================================================
+
+int kuszob = 2500;   // ez alatt FEKETE, felette FEHÉR -- állítsd be!
+int szamlalo = 0;
+
+void indulas() {
+  uzenet("Vonalkereses indul, kuszob: " + String(kuszob));
+}
+
+void vezerles() {
+  // 1. lépés: melyik szenzor lát feketét?
+  int latDb = 0;        // hány szenzor lát vonalat
+  int osszeg = 0;       // a helyük összege (-2, -1, 0, 1, 2)
+  for (int i = 0; i < 5; i++) {
+    if (szenzor[i] < kuszob) {
+      latDb++;
+      osszeg += (i - 2);
+    }
+  }
+
+  // 2. lépés: ha senki sem látja -> állj meg (ezt javítsd ki!)
+  if (latDb == 0) {
+    motor(0, 0);
+    return;
+  }
+
+  // 3. lépés: a vonal helye = a látó szenzorok helyének átlaga
+  float pozicio = (float)osszeg / latDb;    // -2 .. +2
+
+  // 4. lépés: bang-bang vezérlés -- balra van? fordulj balra. Jobbra? jobbra.
+  if (pozicio < -0.5) {
+    motor(40, 90);          // balra
+  } else if (pozicio > 0.5) {
+    motor(90, 40);          // jobbra
+  } else {
+    motor(80, 80);          // egyenesen
+  }
+
+  // Fél másodpercenként kiírjuk, hol látjuk a vonalat (50 hívás = 1 mp)
+  szamlalo++;
+  if (szamlalo % 25 == 0) {
+    uzenet("pozicio: " + String(pozicio, 2) + "  (" + String(latDb) + " szenzor lat)");
+  }
+}

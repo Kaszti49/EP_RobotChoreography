@@ -1,0 +1,426 @@
+// =====================================================================
+//  SHOW_ROBOT -- 6 ROBOTOS SZINKRON KOREOGRAFIA, VONAL NELKUL
+//  Enterpartner robotika -- enkoderes PD-vezerles
+// =====================================================================
+//
+//  MI VALTOZOTT A VONALKOVETESHEZ KEPEST?
+//    A vonalkoveto robot a VONALTOL kapta a visszacsatolast: a PD-szabalyzo
+//    bemenete a vonalpozicio volt. Vonal nelkul ez a jel megszunik.
+//    De a robotnak van MASIK erzekeloje: a ket ENKODER.
+//    Ezert itt a PD ugyanaz a szabalyzo, csak mas a hibajel:
+//
+//        vonalkoveto:  hiba = hol van a vonal a robothoz kepest
+//        show:         hiba = hol KELLENE tartania a kereknek - hol tart
+//
+//    Kerekenkent kulon, ezert mozog a ket kerek fuggetlenul.
+//
+//  MIERT PD ES NEM PID?
+//    Mert a hibank POZICIO-hiba, ami mar onmagaban a sebesseg-hiba
+//    integralja. Egy tartos sebesseg-elteres itt magatol novekvo
+//    pozicio-hibava valik, amit a P-tag azonnal buntet -- vagyis a P-tag
+//    itt ugyanazt a munkat vegzi, amit a vonalkovetesnel az I-tag vegzett
+//    volna. Kulon I-tag csak felcsavarodast (windup) hozna. Ez pontosan a
+//    Szakmai Segedlet erve arra, miert a PD a szakmailag helyes valasztas.
+//
+//  A TELJES SZABALYZO EGY KEREKRE:
+//        u = KFF*v_cel  +  KP*hiba  +  KD*d(hiba)/dt  +  KSYNC*(hibaBal-hibaJobb)
+//        PWM = elojel * (HOLTSAV + |u|)
+//
+//    KFF*v_cel     FEED-FORWARD: a mert PWM/sebesseg jelleggorbebol tudjuk,
+//                  mennyi PWM kell -- a PD-nek csak a maradekot kell hoznia
+//    KP, KD        a klasszikus PD a pozicio-hibara, szurt derivalttal
+//    KSYNC         KERESZTCSATOLAS: ha a bal lemarad a jobbhoz kepest, a bal
+//                  kap tobbet ES a jobb kap kevesebbet. Ettol lesz EGYENES az
+//                  egyenes: nem az szamit, hogy mindket kerek onmagaban pontos
+//                  legyen, hanem hogy EGYMASHOZ KEPEST pontosak legyenek.
+//    HOLTSAV       a PWM, ami alatt a kerek meg meg sem mozdul
+//
+//  MIERT MOZOG A HAT ROBOT EGYFORMAN?
+//    Mert a kod MINDEN robotban ugyanaz, es minden robot a SAJAT mert
+//    adataival szamolja at a koreografiat (mm/s, fok/s) sajat PWM-re.
+//    Az elteresek a tablazatban vannak, nem a mozgasban.
+//
+//  HASZNALAT
+//    1. Ird at a ROBOT szamot (1..6) -- EZ AZ EGYETLEN, ami robotonkent mas.
+//    2. A 2. blokkba masold be a robot_adatok.md mert ertekeit.
+//    3. A 8. blokkba masold be a szimulatorbol exportalt koreografiat.
+//    4. Fordit+Feltolt mind a hat robotra, Start mindegyiken,
+//       aztan LEKAPCSOLNI A TERMI VILAGITAST -> mind a hat egyszerre indul.
+// =====================================================================
+
+
+// ============ 1. MELYIK ROBOT VAGYOK? ============
+#define ROBOT 1              // <<<<<< 1..6 -- CSAK EZT ALLITSD AT ROBOTONKENT!
+
+const int R = ROBOT - 1;     // tomb-index
+
+
+// ============ 2. MERT ADATOK (a kalibracio eredmenye) ============
+//  Toltsd ki a robot_adatok.md tablazatabol! A sorrend: robot 1, 2, 3, 4, 5, 6.
+//  A lenti szamok NEVLEGESEK -- meres nelkul a show nem lesz szinkronban.
+
+// K1: mm egy impulzusra { bal, jobb }
+const float MM_PER_IMP[6][2] = {
+  {0.34040, 0.34040},   // robot 1
+  {0.34040, 0.34040},   // robot 2
+  {0.34040, 0.34040},   // robot 3
+  {0.34040, 0.34040},   // robot 4
+  {0.34040, 0.34040},   // robot 5
+  {0.34040, 0.34040}    // robot 6
+};
+
+// K2: effektiv nyomtav mm-ben
+const float NYOMTAV_MM[6] = { 153.0, 153.0, 153.0, 153.0, 153.0, 153.0 };
+
+// K0/K3: holtsav PWM { bal, jobb }
+const int HOLTSAV[6][2] = {
+  {60, 60}, {60, 60}, {60, 60}, {60, 60}, {60, 60}, {60, 60}
+};
+
+// K3: feed-forward, PWM egy impulzus/s sebesseghez { bal, jobb }
+const float KFF[6][2] = {
+  {0.20000, 0.20000}, {0.20000, 0.20000}, {0.20000, 0.20000},
+  {0.20000, 0.20000}, {0.20000, 0.20000}, {0.20000, 0.20000}
+};
+
+// K3: a show-ban megengedett legnagyobb kerek-sebesseg (imp/s), a mert max 65 %-a
+const int VMAX_IMPS[6] = { 600, 600, 600, 600, 600, 600 };
+
+// K4: hangolt PD + keresztcsatolas (a KP/KD nevek a keretben foglaltak!)
+const float PD_KP[6]    = { 0.60, 0.60, 0.60, 0.60, 0.60, 0.60 };
+const float PD_KD[6]    = { 0.02, 0.02, 0.02, 0.02, 0.02, 0.02 };
+const float PD_KSYNC[6] = { 0.30, 0.30, 0.30, 0.30, 0.30, 0.30 };
+
+// K0: elojelek. Alapbol mind +1; csak akkor ird at, ha a K0 mast mondott
+// ES a Muszerfal "Enkoder-irany felismerese" (N,AUTO) sem oldotta meg.
+const int ENC_ELOJEL[6][2] = { {1,1}, {1,1}, {1,1}, {1,1}, {1,1}, {1,1} };
+const int MOT_ELOJEL[6][2] = { {1,1}, {1,1}, {1,1}, {1,1}, {1,1}, {1,1} };
+
+
+// ============ 3. SHOW-BEALLITASOK (mind a hat roboton AZONOS!) ============
+float GYORSULAS_MM_S2 = 600.0;   // gyorsulas-korlat. Sima ko/parketta padlon EZ A LEGFONTOSABB
+                                 // szam: a megcsuszott kerek utat veszit, amit az enkoder nem lat,
+                                 // es amit semmilyen szabalyzo nem tud visszaszerezni.
+float SZOGGYORSULAS   = 360.0;   // fok/s^2 korlat a fordulasra
+float D_ALFA          = 0.30;    // a derivalt szurese (ugyanaz az elv, mint a vonalkovetesnel)
+float HIBA_HATAR      = 300.0;   // kovetesi hiba korlatja impulzusban (anti-windup)
+float U_MIN           = 3.0;     // ez alatt nem adunk PWM-et (holtsav-remeges ellen)
+float ALLAS_TURES     = 12.0;    // allo helyzetben ennyi impulzus hibat nem korrigalunk
+
+// --- inditas-szinkron ---
+int   TRIGGER_KUSZOB   = 1200;   // az ot szenzor osszegenek ekkora ugrasa = INDULJ
+int   TRIGGER_MIN_MS   = 1500;   // ennyi ideig csak figyel (beall az alapszint)
+int   TARTALEK_MOD     = 1;      // 0 = csak fenyjelre indul; 1 = visszaszamlalas is inditja
+unsigned long VISSZASZAMLALAS_MS = 10000;   // TARTALEK_MOD=1 eseten ennyi ido utan magatol indul
+
+int   TELEMETRIA_CIKLUS = 50;    // hany 20 ms-os ciklusonkent irjon naplot (50 = 1 mp)
+
+
+// ============ 4. A KOREOGRAFIA FORMATUMA ============
+//  Egyetlen primitiv mindent lefed:
+//      v = 0, omega = 0     ->  all (pozicio-tartas)
+//      v > 0, omega = 0     ->  egyenesen elore
+//      v = 0, omega != 0    ->  helyben fordulas
+//      v > 0, omega != 0    ->  iv (kanyar)
+//  omega ELOJELE: POZITIV = JOBBRA fordul (oramutato jarasa szerint).
+//  A lepesek kozotti valtast a gyorsulas-korlat simitja -- nem kell rampat irni.
+struct Lepes {
+  uint16_t ido_ms;      // meddig tart ez a lepes (max 65535 ms)
+  float    v_mm_s;      // halado sebesseg, mm/s
+  float    omega_fok_s; // fordulasi sebesseg, fok/s (+ = jobbra)
+};
+
+
+// ============ 5. BELSO ALLAPOT ============
+int   shAllapot   = 0;      // 0 = varakozik az inditasra, 1 = megy a show, 2 = vege
+unsigned long armMs = 0, showMs = 0, utolsoTick = 0;
+int   lepesIdx    = 0;
+
+float vAkt = 0, omegaAkt = 0;                 // slew-limitalt aktualis parancs
+float celBal = 0, celJobb = 0;                // cel-impulzuspozicio (tort resszel!)
+float elozoHibaBal = 0, elozoHibaJobb = 0;
+float dSzurtBal = 0, dSzurtJobb = 0;
+long  elozoEncBal = 0, elozoEncJobb = 0;
+
+float odoX = 0, odoY = 0, odoSzog = 0;        // odometria (csak naplozashoz)
+float alapFeny = -1;                          // az inditas-trigger alapszintje
+int   shCiklus = 0;
+int   utolsoVisszaszam = -1;
+int   telitesSzamlalo = 0;
+
+// elojel-helyes enkoderallas
+long encB() { return encBal  * ENC_ELOJEL[R][0]; }
+long encJ() { return encJobb * ENC_ELOJEL[R][1]; }
+
+
+// ============ 6. PWM-SZAMITAS (holtsav-kompenzacioval) ============
+int pwmSzamol(float u, int oldal) {
+  if (u > -U_MIN && u < U_MIN) return 0;            // holt zona: ne remegjen
+  int   elojel = (u > 0) ? 1 : -1;
+  float nagysag = (u > 0) ? u : -u;
+  int   p = HOLTSAV[R][oldal] + (int)(nagysag + 0.5);
+  if (p > maximumPWM) p = maximumPWM;
+  return elojel * p * MOT_ELOJEL[R][oldal];
+}
+
+
+// ============ 7. INDITAS-SZINKRON (fenyjel az IR-szenzorokrol) ============
+//  Nem teszunk fel uj alkatreszt: a mar meglevo ot vonalszenzort hasznaljuk
+//  fenymerore. A termi vilagitas lekapcsolasa MINDEN robotnal ugyanabban a
+//  pillanatban valtoztatja meg a szenzorok osszeget -- ez a kozos startjel.
+//  A lassan valtozo alapszintet kovetjuk (napszak, arnyek), igy csak a
+//  HIRTELEN valtozas indit.
+void showIndul(unsigned long most) {
+  enkoderNullaz();
+  elozoEncBal = 0; elozoEncJobb = 0;
+  celBal = 0; celJobb = 0;
+  elozoHibaBal = 0; elozoHibaJobb = 0;
+  dSzurtBal = 0; dSzurtJobb = 0;
+  vAkt = 0; omegaAkt = 0;
+  odoX = 0; odoY = 0; odoSzog = 0;
+  lepesIdx = 0;
+  showMs = most;
+  utolsoTick = most;
+  shAllapot = 1;
+  uzenet(">>> SHOW INDUL <<<");
+}
+
+void triggerFigyeles(unsigned long most) {
+  motor(0, 0);
+
+  long osszeg = 0;
+  for (int i = 0; i < 5; i++) osszeg += szenzor[i];
+  if (alapFeny < 0) alapFeny = (float)osszeg;
+
+  unsigned long eltelt = most - armMs;
+
+  if (eltelt > (unsigned long)TRIGGER_MIN_MS) {
+    float elteres = (float)osszeg - alapFeny;
+    if (elteres < 0) elteres = -elteres;
+    if (elteres > (float)TRIGGER_KUSZOB) {
+      uzenet("Fenyjel! (elteres " + String(elteres, 0) + ")");
+      showIndul(most);
+      return;
+    }
+  }
+
+  // lassu alapszint-kovetes: a lassu fenyvaltozas (napszak, arnyek) ne inditson
+  alapFeny += ((float)osszeg - alapFeny) * 0.02;
+
+  if (TARTALEK_MOD == 1) {
+    if (eltelt >= VISSZASZAMLALAS_MS) {
+      uzenet("Nem jott fenyjel -- tartalek inditas.");
+      showIndul(most);
+      return;
+    }
+    int hatra = (int)((VISSZASZAMLALAS_MS - eltelt) / 1000) + 1;
+    if (hatra != utolsoVisszaszam) {
+      utolsoVisszaszam = hatra;
+      uzenet("varakozas fenyjelre... tartalek indulas: " + String(hatra));
+    }
+  }
+}
+
+
+// ============ 8. A KOREOGRAFIA ============
+//  EZT A BLOKKOT A SZIMULATOR "Kod exportalasa" GOMBJA IRJA MEG HELYETTED.
+//  Az also demo egy "V-nyitas": a hat robot egy sorbol legyezoszeruen
+//  szetnyilik, elore megy, visszafordul es kihatral.
+//  Az elso lepes SZANDEKOSAN allas: ez nyeli el az inditas maradek szorasat.
+
+const Lepes SHOW1[] = {
+  {2000,   0,   0}, {1000,   0, -45}, {3000, 160,   0}, {1000,   0,  45},
+  {1000,   0,   0}, {2000,   0,  90}, {3800, 160,   0}, {1000,   0,   0}
+};
+const Lepes SHOW2[] = {
+  {2000,   0,   0}, {1000,   0, -30}, {3000, 160,   0}, {1000,   0,  30},
+  {1000,   0,   0}, {2000,   0,  90}, {3800, 160,   0}, {1000,   0,   0}
+};
+const Lepes SHOW3[] = {
+  {2000,   0,   0}, {1000,   0, -15}, {3000, 160,   0}, {1000,   0,  15},
+  {1000,   0,   0}, {2000,   0,  90}, {3800, 160,   0}, {1000,   0,   0}
+};
+const Lepes SHOW4[] = {
+  {2000,   0,   0}, {1000,   0,  15}, {3000, 160,   0}, {1000,   0, -15},
+  {1000,   0,   0}, {2000,   0, -90}, {3800, 160,   0}, {1000,   0,   0}
+};
+const Lepes SHOW5[] = {
+  {2000,   0,   0}, {1000,   0,  30}, {3000, 160,   0}, {1000,   0, -30},
+  {1000,   0,   0}, {2000,   0, -90}, {3800, 160,   0}, {1000,   0,   0}
+};
+const Lepes SHOW6[] = {
+  {2000,   0,   0}, {1000,   0,  45}, {3000, 160,   0}, {1000,   0, -45},
+  {1000,   0,   0}, {2000,   0, -90}, {3800, 160,   0}, {1000,   0,   0}
+};
+
+const Lepes* const SHOW[6] = { SHOW1, SHOW2, SHOW3, SHOW4, SHOW5, SHOW6 };
+const int SHOW_DB[6] = {
+  sizeof(SHOW1) / sizeof(Lepes), sizeof(SHOW2) / sizeof(Lepes),
+  sizeof(SHOW3) / sizeof(Lepes), sizeof(SHOW4) / sizeof(Lepes),
+  sizeof(SHOW5) / sizeof(Lepes), sizeof(SHOW6) / sizeof(Lepes)
+};
+
+//  Kiindulasi helyek a padlon (mm, es fok). Ide ragaszd a szalagjelet!
+//  Csak a naplozashoz kell: a robot ebbol tudja megmondani, HOVA hitte magat.
+const float START_X[6]    = { -1000, -600, -200,  200,  600, 1000 };
+const float START_Y[6]    = { -1500, -1500, -1500, -1500, -1500, -1500 };
+const float START_SZOG[6] = {     0,    0,    0,    0,    0,    0 };
+
+
+// ============ 9. A KERET HIVJA: EGYSZER ============
+void indulas() {
+  motor(0, 0);
+  enkoderNullaz();
+  shAllapot = 0;
+  armMs = millis();
+  utolsoTick = armMs;
+  alapFeny = -1;
+  utolsoVisszaszam = -1;
+  shCiklus = 0;
+  telitesSzamlalo = 0;
+
+  uzenet("SHOW ROBOT " + String(ROBOT) + " -- elesitve.");
+  uzenet("mm/imp " + String(MM_PER_IMP[R][0], 5) + "/" + String(MM_PER_IMP[R][1], 5)
+         + "  nyomtav " + String(NYOMTAV_MM[R], 1) + " mm  vmax " + String(VMAX_IMPS[R]) + " imp/s");
+  uzenet("A koreografia " + String(SHOW_DB[R]) + " lepes. Varakozas a kozos fenyjelre...");
+}
+
+
+// ============ 10. A KERET HIVJA: 20 MS-ONKENT ============
+void vezerles() {
+  unsigned long most = millis();
+
+  // valodi dt (nem feltetelezzuk, hogy pont 20 ms telt el)
+  float dt = (float)(most - utolsoTick) / 1000.0;
+  utolsoTick = most;
+  if (dt <= 0.0 || dt > 0.2) dt = 0.02;
+
+  if (shAllapot == 0) { triggerFigyeles(most); return; }
+  if (shAllapot == 2) { motor(0, 0); return; }
+
+  // ---------- 10.1 hol tartunk a koreografiaban ----------
+  unsigned long t = most - showMs;
+  unsigned long vege = 0;
+  int idx = 0;
+  while (idx < SHOW_DB[R]) {
+    vege += SHOW[R][idx].ido_ms;
+    if (t < vege) break;
+    idx++;
+  }
+  lepesIdx = idx;
+
+  float vCel = 0, omegaCel = 0;
+  bool  vegeVan = (idx >= SHOW_DB[R]);
+  if (!vegeVan) {
+    vCel     = SHOW[R][idx].v_mm_s;
+    omegaCel = SHOW[R][idx].omega_fok_s;
+  }
+
+  // ---------- 10.2 gyorsulas-korlat (csuszasvedelem) ----------
+  float dvMax = GYORSULAS_MM_S2 * dt;
+  float dv = vCel - vAkt;
+  if (dv >  dvMax) dv =  dvMax;
+  if (dv < -dvMax) dv = -dvMax;
+  vAkt += dv;
+
+  float dwMax = SZOGGYORSULAS * dt;
+  float dw = omegaCel - omegaAkt;
+  if (dw >  dwMax) dw =  dwMax;
+  if (dw < -dwMax) dw = -dwMax;
+  omegaAkt += dw;
+
+  // ---------- 10.3 kinematika: (v, omega) -> kerek-sebessegek ----------
+  //  ITT tunik el a hat robot kozti kulonbseg: mindegyik a SAJAT
+  //  mm/impulzus es nyomtav ertekevel valtja at ugyanazt a koreografiat.
+  float omegaRad = omegaAkt * 0.01745329;
+  float fel = NYOMTAV_MM[R] / 2.0;
+  float vBalImpS  = (vAkt + omegaRad * fel) / MM_PER_IMP[R][0];
+  float vJobbImpS = (vAkt - omegaRad * fel) / MM_PER_IMP[R][1];
+
+  // sebesseg-plafon: ARANYOSAN huzzuk vissza mindkettot, hogy a mozgas
+  // ALAKJA ne valtozzon (csak lassabb legyen)
+  float nagyobb = (vBalImpS > 0 ? vBalImpS : -vBalImpS);
+  float masik   = (vJobbImpS > 0 ? vJobbImpS : -vJobbImpS);
+  if (masik > nagyobb) nagyobb = masik;
+  if (nagyobb > (float)VMAX_IMPS[R]) {
+    float sk = (float)VMAX_IMPS[R] / nagyobb;
+    vBalImpS  *= sk;
+    vJobbImpS *= sk;
+    if (shCiklus % 25 == 0)
+      uzenet("FIGYELEM: a koreografia gyorsabb, mint a robot maximuma -- lassits a szimulatorban!");
+  }
+
+  // ---------- 10.4 cel-pozicio (a sebesseg integralja) ----------
+  celBal  += vBalImpS  * dt;
+  celJobb += vJobbImpS * dt;
+
+  float hibaBal  = celBal  - (float)encB();
+  float hibaJobb = celJobb - (float)encJ();
+
+  // kovetesi hiba korlatja: ha a robot beszorult vagy csuszik, ne gyujtson
+  // vegtelen hibat, amit aztan egyben "ledolgozna" (ez a windup megfeleloje)
+  bool telites = false;
+  if (hibaBal  >  HIBA_HATAR) { hibaBal  =  HIBA_HATAR; celBal  = (float)encB() + HIBA_HATAR; telites = true; }
+  if (hibaBal  < -HIBA_HATAR) { hibaBal  = -HIBA_HATAR; celBal  = (float)encB() - HIBA_HATAR; telites = true; }
+  if (hibaJobb >  HIBA_HATAR) { hibaJobb =  HIBA_HATAR; celJobb = (float)encJ() + HIBA_HATAR; telites = true; }
+  if (hibaJobb < -HIBA_HATAR) { hibaJobb = -HIBA_HATAR; celJobb = (float)encJ() - HIBA_HATAR; telites = true; }
+  telitesSzamlalo = telites ? telitesSzamlalo + 1 : 0;
+  if (telitesSzamlalo == 75)
+    uzenet("FIGYELEM: tartos kovetesi hiba -- akad a kerek, csuszik, vagy gyenge az akku!");
+
+  // ---------- 10.5 PD + keresztcsatolas ----------
+  float dB = (hibaBal  - elozoHibaBal)  / dt;
+  float dJ = (hibaJobb - elozoHibaJobb) / dt;
+  dSzurtBal  += (dB - dSzurtBal)  * D_ALFA;      // szurt derivalt: a nyers kulonbseg zajos
+  dSzurtJobb += (dJ - dSzurtJobb) * D_ALFA;
+  elozoHibaBal  = hibaBal;
+  elozoHibaJobb = hibaJobb;
+
+  float szinkron = hibaBal - hibaJobb;           // > 0: a bal kerek marad le
+
+  float uBal  = KFF[R][0] * vBalImpS  + PD_KP[R] * hibaBal  + PD_KD[R] * dSzurtBal
+                + PD_KSYNC[R] * szinkron;
+  float uJobb = KFF[R][1] * vJobbImpS + PD_KP[R] * hibaJobb + PD_KD[R] * dSzurtJobb
+                - PD_KSYNC[R] * szinkron;
+
+  // allo helyzetben ne kapkodjon par impulzusert
+  bool allunk = (vCel == 0 && omegaCel == 0 && vAkt == 0 && omegaAkt == 0);
+  if (allunk) {
+    if (hibaBal  < ALLAS_TURES && hibaBal  > -ALLAS_TURES) uBal  = 0;
+    if (hibaJobb < ALLAS_TURES && hibaJobb > -ALLAS_TURES) uJobb = 0;
+  }
+
+  motor(pwmSzamol(uBal, 0), pwmSzamol(uJobb, 1));
+
+  // ---------- 10.6 odometria (naplozashoz) ----------
+  long dbi = encB() - elozoEncBal;
+  long dji = encJ() - elozoEncJobb;
+  elozoEncBal  = encB();
+  elozoEncJobb = encJ();
+  float dBalMm  = (float)dbi * MM_PER_IMP[R][0];
+  float dJobbMm = (float)dji * MM_PER_IMP[R][1];
+  float dUt = (dBalMm + dJobbMm) / 2.0;
+  odoSzog += (dBalMm - dJobbMm) / NYOMTAV_MM[R];      // radian, + = jobbra
+  odoX += dUt * sin(odoSzog);
+  odoY += dUt * cos(odoSzog);
+
+  // ---------- 10.7 vege ----------
+  if (vegeVan && vAkt == 0 && omegaAkt == 0) {
+    motor(0, 0);
+    shAllapot = 2;
+    uzenet(">>> SHOW VEGE <<<  ido: " + String(t) + " ms");
+    uzenet("odometria: x=" + String(START_X[R] + odoX, 0) + " y=" + String(START_Y[R] + odoY, 0)
+           + " szog=" + String(START_SZOG[R] + odoSzog * 57.2958, 0) + " fok");
+    uzenet("Merd meg, hol all TENYLEG -- a ketto kulonbsege a robot driftje.");
+    return;
+  }
+
+  // ---------- 10.8 telemetria ----------
+  shCiklus++;
+  if (shCiklus % TELEMETRIA_CIKLUS == 0) {
+    uzenet("t=" + String(t / 1000) + "s lepes=" + String(idx)
+           + " v=" + String(vAkt, 0) + " w=" + String(omegaAkt, 0)
+           + " hiba=" + String(hibaBal, 0) + "/" + String(hibaJobb, 0)
+           + " xy=" + String(START_X[R] + odoX, 0) + "," + String(START_Y[R] + odoY, 0));
+  }
+}

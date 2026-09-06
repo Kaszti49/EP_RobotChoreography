@@ -1,0 +1,116 @@
+// =====================================================================
+//  K2 -- EFFEKTIV NYOMTAV (a ket kerek tavolsaga), HELYBEN FORGATASSAL
+//  Show-koreografia: 3. meres a hat robotbol mindegyiken
+// =====================================================================
+//
+//  MIT MER?
+//    A robot EFFEKTIV nyomtavat: azt a "b" tavolsagot, amivel szamolva a
+//    kinematika igazat mond. Ez NEM azonos a ket kerek kozott mert
+//    tavolsaggal! A gumi lapul, a kerek a szelen erintkezik, kicsit
+//    oldalra is csuszik -- ezert a szamolashoz jo "b" tipikusan par
+//    millimeterrel elter a vonalzoval mert ertektol.
+//
+//  MIERT KELL?
+//    A nyomtav donti el, mennyit fordul a robot. Ha 3 %-kal rossz, akkor
+//    minden 90 fokos fordulat 2,7 fokot teved -- egy koreografia vegere
+//    ez tobb tiz fok es fel meter elteres. A ket kerek arany-hibajat a K1
+//    fogja meg, a fordulasi hibat EZ.
+//
+//  MIERT 5 TELJES FORDULAT?
+//    Mert a hiba HALMOZODIK. Egyetlen fordulatnal 2 fokot nem tudsz
+//    leolvasni, ot fordulat utan viszont ugyanaz a hiba mar 10 fok --
+//    jol lathato. A mert szoget aztan visszaosztjuk.
+//
+//  ELOKESZULET
+//    - Sik, kemeny padlo (a show padloja!), kb. 1 m szabad hely.
+//    - Ragassz egy szalag-NYILAT a padlora, es allitsd ra a robotot
+//      pontosan, a menetiranya a nyillal egy vonalban.
+//    - Ragassz egy kis szalagcsikot a robot orrara is (ez az o "mutatoja").
+//    - Toltsd ki lent az MM_BAL / MM_JOBB erteket a K1 meresbol!
+//
+//  HASZNALAT
+//    Start -> a robot 5-ot fordul JOBBRA, megall, kiir; 3 mp szunet;
+//    utana 5-ot BALRA, megall, kiir.
+//    MINDKET allas utan olvasd le, hany FOKKAL all tul (vagy alul) a nyil
+//    a kiindulasi iranyhoz kepest, es szamold ki a lenti keplettel.
+// =====================================================================
+
+// --------------------- a K1 meresbol ide! ---------------------
+float MM_BAL      = 0.34040;   // <<< ird at a sajat K1 eredmenyedre
+float MM_JOBB     = 0.34040;   // <<<
+
+// --------------------- beallitasok ---------------------
+float NYOMTAV_BECSLES = 153.0;  // kiindulasi nyomtav mm-ben (a segedlet 354 imp / 90 fok adatabol)
+int   FORDULAT_DB     = 5;      // hany teljes kort forduljon
+int   FORGAS_PWM      = 95;     // forgatasi sebesseg (lassu = pontos)
+int   LASSITAS_PWM    = 70;     // az utolso szakaszon ennyire lassit
+
+// --------------------- segedfuggveny ---------------------
+// irany: +1 = jobbra (oramutato), -1 = balra.  cel = impulzus kerekenkent
+void forgat(int irany, long cel) {
+  enkoderNullaz();
+  varj(150);
+
+  while (true) {
+    long b = encBal  < 0 ? -encBal  : encBal;
+    long j = encJobb < 0 ? -encJobb : encJobb;
+    long atlag = (b + j) / 2;
+    if (atlag >= cel) break;
+
+    // a ket kerek kiegyenlitese: amelyik elore szaladt, az lassul
+    int korr = (int)((b - j) / 4);
+    if (korr >  25) korr =  25;
+    if (korr < -25) korr = -25;
+
+    int pwm = (atlag > cel - 400) ? LASSITAS_PWM : FORGAS_PWM;   // vegen lassit
+    motor(irany * (pwm - korr), -irany * (pwm + korr));
+    varj(10);
+  }
+
+  motor(0, 0);
+  varj(1200);   // hagyjuk teljesen megallni, mielott olvasunk
+}
+
+void indulas() {
+  float mmAtlag = (MM_BAL + MM_JOBB) / 2.0;
+
+  // egy teljes korhoz kerekenkent ennyi impulzus kell:
+  //   iv = (kerulet fele) * szog = (NYOMTAV/2) * 2*PI  ->  imp = PI * NYOMTAV / mm_per_imp
+  long celEgyKor = (long)(3.14159265 * NYOMTAV_BECSLES / mmAtlag);
+  long cel = celEgyKor * FORDULAT_DB;
+
+  uzenet("K2 -- nyomtav-meres. Becsles: " + String(NYOMTAV_BECSLES, 1) + " mm");
+  uzenet("Egy teljes kor = " + String(celEgyKor) + " impulzus/kerek, osszesen "
+         + String(cel) + " (" + String(FORDULAT_DB) + " kor).");
+  uzenet("NE nyulj a robothoz! Indulas 3 mp mulva...");
+  varj(3000);
+
+  // ---------- 1. JOBBRA ----------
+  uzenet("Forgas JOBBRA...");
+  forgat(+1, cel);
+  uzenet("=== JOBBRA kesz. Olvasd le a szoget! ===");
+  uzenet("Ha TULFORDULT (a nyil tullepett a jelen): a delta POZITIV.");
+  uzenet("Ha nem ert oda: a delta NEGATIV.");
+  uzenet("Keplet:  uj_nyomtav = " + String(NYOMTAV_BECSLES, 1) + " * " + String(360 * FORDULAT_DB)
+         + " / (" + String(360 * FORDULAT_DB) + " + delta)");
+  varj(8000);   // ennyi ido a leolvasasra
+
+  // ---------- 2. BALRA ----------
+  uzenet("Forgas BALRA...");
+  forgat(-1, cel);
+  uzenet("=== BALRA kesz. Olvasd le ezt a szoget is! ===");
+
+  uzenet("=========== K2 KIERTEKELES ===========");
+  uzenet("1) Szamold ki mindket iranyra:  uj = regi * " + String(360 * FORDULAT_DB)
+         + " / (" + String(360 * FORDULAT_DB) + " + delta)");
+  uzenet("2) A KET EREDMENY ATLAGA a NYOMTAV_MM, ezt ird a tablazatba.");
+  uzenet("3) Ird vissza ide a NYOMTAV_BECSLES-be, es futtasd ujra:");
+  uzenet("   ha a delta mar 5 fok alatt van, keszen vagy.");
+  uzenet("======================================");
+  motor(0, 0);
+}
+
+void vezerles() {
+  // Minden az indulas()-ban tortenik.
+  motor(0, 0);
+}

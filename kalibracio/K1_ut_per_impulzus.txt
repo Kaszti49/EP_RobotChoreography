@@ -1,0 +1,110 @@
+// =====================================================================
+//  K1 -- UT / IMPULZUS  (mm egy enkoder-impulzusra), KEREKENKENT
+//  Show-koreografia: 2. meres a hat robotbol mindegyiken
+// =====================================================================
+//
+//  MIT MER?
+//    Hany millimetert halad a robot egyetlen enkoder-impulzus alatt --
+//    KULON a bal es KULON a jobb kereken.
+//    A segedlet nevleges erteke 138,9 mm / 408 impulzus = 0,3404 mm/imp,
+//    de minden robot mas: mas a kerek atmeroje, a gumi kopasa, a leszoritas.
+//
+//  MIERT IGY? (tolva, nem hajtva!)
+//    Ez a meres TISZTA GEOMETRIA: motor nelkul nincs kiporges, nincs
+//    nyomatek-fuggo csuszas, nincs akkufeszultseg-hatas. Amit merunk, az
+//    tenyleg a kerek kerulete. A hajtas alatti csuszast kesobb a K4
+//    zart-koru ellenorzes mutatja meg.
+//
+//  MIERT AD EGY MERES KET SZAMOT?
+//    Ha a robot EGYENESEN halad D millimetert, akkor MINDKET kerek pontosan
+//    D millimetert tett meg. Tehat:
+//        mm/imp bal  = D / encBal
+//        mm/imp jobb = D / encJobb
+//    A ket szam ARANYA pont az a kerek-aszimmetria, amitol a robot magatol
+//    elkanyarodik -- ezt kell a vezerlesnek kiegyenlitenie.
+//
+//  ELOKESZULET  (ez a meres csak akkor er valamit, ha egyenes a palya!)
+//    - Ragassz le a padlon egy EGYENES vonalat, es merj rajta ki UT_MM-t.
+//    - Vezetonek hasznalj falat, hosszu vonalzot vagy egy leszoritott lecet:
+//      a robot oldala vegig erintse -- csak igy megy tenyleg egyenesen.
+//    - A robot ALL a padlon, a motorok kikapcsolva (a program nem hajt).
+//    - Toldd vegig LASSAN es egyenletesen, a kerekek ne csusszanak meg.
+//
+//  HASZNALAT
+//    Beillesztes -> Fordit+Feltolt -> Start -> told vegig a robotot ->
+//    engedd el. 2 masodperc allas utan magatol kiirja az eredmenyt.
+//    Ismeteld 3-szor (3x Start), es a HAROM MERES ATLAGAT ird be.
+//    Ha a 3 meres 1 %-nal jobban szor: csuszik vagy laza valami.
+// =====================================================================
+
+// --------------------- beallitasok ---------------------
+float UT_MM       = 2000.0;   // ENNYIT tolsz vegig, millimeterben. Merd ki pontosan!
+long  MIN_IMP     = 500;      // ennyi impulzus alatt nem tekintjuk ervenyes menetnek
+int   ALLAS_MS    = 2000;     // ennyi mozdulatlansag utan irja ki az eredmenyt
+
+// --------------------- allapot ---------------------
+long  utolsoBal   = 0;
+long  utolsoJobb  = 0;
+unsigned long utolsoValtozas = 0;
+bool  kiirtuk     = false;
+int   k1Ciklus    = 0;
+
+void indulas() {
+  enkoderNullaz();
+  motor(0, 0);
+  utolsoBal  = 0;
+  utolsoJobb = 0;
+  utolsoValtozas = millis();
+  kiirtuk = false;
+  k1Ciklus = 0;
+  uzenet("K1 -- told vegig a robotot " + String(UT_MM, 0) + " mm-t a vezeto mellett, aztan engedd el.");
+}
+
+void vezerles() {
+  motor(0, 0);                       // ez a meres SOHA nem hajt
+
+  // mozgott-e?
+  if (encBal != utolsoBal || encJobb != utolsoJobb) {
+    utolsoBal  = encBal;
+    utolsoJobb = encJobb;
+    utolsoValtozas = millis();
+    kiirtuk = false;
+  }
+
+  // tolas kozben masodpercenkent egy allapotsor
+  k1Ciklus++;
+  if (!kiirtuk && k1Ciklus % 50 == 0)
+    uzenet("... bal=" + String(encBal) + "  jobb=" + String(encJobb));
+
+  // megallt: kiertekeles
+  if (!kiirtuk && millis() - utolsoValtozas > (unsigned long)ALLAS_MS) {
+    kiirtuk = true;
+
+    long b = encBal  < 0 ? -encBal  : encBal;
+    long j = encJobb < 0 ? -encJobb : encJobb;
+
+    if (b < MIN_IMP || j < MIN_IMP) {
+      uzenet("Meg nem toltal eleget (bal=" + String(b) + " jobb=" + String(j) + "). Told tovabb!");
+      kiirtuk = false;
+      return;
+    }
+
+    float mmBal  = UT_MM / (float)b;
+    float mmJobb = UT_MM / (float)j;
+    float arany  = mmBal / mmJobb;
+
+    uzenet("=========== K1 EREDMENY ===========");
+    uzenet("impulzus  bal=" + String(b) + "  jobb=" + String(j) + "   (ut: " + String(UT_MM, 0) + " mm)");
+    uzenet("--> MM_PER_IMP a tablazatba: { " + String(mmBal, 5) + ", " + String(mmJobb, 5) + " }");
+    uzenet("arany bal/jobb = " + String(arany, 4) + "   (1,000 = tokeletesen egyforma kerekek)");
+
+    // kerekenkenti impulzus/fordulat -- ezt a Muszerfal N parancsaba is beirhatod
+    uzenet("impulzus/fordulat  bal=" + String(138.9 / mmBal, 0) + "  jobb=" + String(138.9 / mmJobb, 0)
+           + "   (nevleges: 408)");
+
+    if (arany > 1.03 || arany < 0.97)
+      uzenet("FIGYELEM: 3 %-nal nagyobb elteres a ket kerek kozott -- nezd meg, nem csuszott-e meg tolas kozben.");
+    uzenet("Ismeteld 3-szor, es a HAROM ATLAGAT ird be a robot_adatok.md-be.");
+    uzenet("===================================");
+  }
+}

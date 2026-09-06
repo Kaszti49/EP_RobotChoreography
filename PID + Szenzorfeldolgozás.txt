@@ -1,0 +1,127 @@
+// ==========================================================================
+//  4. PELDA -- PID + SZENZORFELDOLGOZAS LEPESROL LEPESRE
+// ==========================================================================
+//
+//  A 3. pelda a kesz vonalpoziciot kapta a kerettol. ITT MINDENT MI CSINALUNK,
+//  a nyers szenzorjeltol a motorokig -- igy latszik, mi tortenik a jellel:
+//
+//    1. MERES            5 infravoros szenzor nyers ADC-erteke (0..4095)
+//    2. KONDICIONALAS    zajszures (mozgo atlag / EMA) + kalibracio + normalas 0..1000
+//    3. POZICIO          sulyozott atlag -> hol a vonal (-2000..+2000), latszik-e
+//    4. DONTES           PID szabalyzo: P + I + D, anti-windup
+//    5. BEAVATKOZAS      motorok, korlatozva
+//
+//  A keret ugyanezt csinalja a hatterben (szenzorOlvas + szenzorNormal +
+//  vonalPozicioSzamol + qUpdate) -- itt a sajat valtozatunk fut helyette.
+//  A kalibracios ertekeket (kalFeher[], kalFekete[]) a Muszerfal kalibralasa adja.
+
+// --------------------- HANGOLHATO SZAMOK ---------------------
+int   pAlap   = 80;      // alapsebesseg PWM (0..255)
+float pKp     = 0.05;    // P: aranyos    (0,02..0,1)
+float pKi     = 0.0005;  // I: integralo  (0,0001..0,002)  -- tartos elhuzast tuntet el
+float pKd     = 0.5;     // D: derivalo   (0,2..2)          -- csillapit, tullovest fog
+float iHatar  = 60;      // az I-tag hozzajarulasa legfeljebb +-ennyi PWM (anti-windup)
+float szuroAlfa = 0.5;   // szenzor-EMA: 1,0 = nincs szures, 0,2 = nagyon sima (de lassu!)
+int   vonalKuszob = 300; // normalt ertek (0..1000) efolott "lat vonalat" a szenzor
+int   fordulasPwm = 80;  // vonalvesztesnel a helyben fordulas sebessege
+
+// --------------------- allapot ---------------------
+float simitott[5] = {-1, -1, -1, -1, -1};   // 2. lepes: szurt nyers ertekek
+int   normalt[5]  = {0, 0, 0, 0, 0};        // 2. lepes: 0 = feher .. 1000 = fekete
+int   pozicio     = 0;                      // 3. lepes
+bool  latVonal    = false;
+int   utolsoIrany = 1;
+float iOsszeg     = 0;                      // 4. lepes: az integrator
+int   elozoPoz    = 0;
+float dSzurt      = 0;
+int   ciklus      = 0;
+
+// ====================== 1. MERES ======================
+void meres(int nyers[5]) {
+  for (int i = 0; i < 5; i++) nyers[i] = analogRead(SENSOR_PIN[i]);   // 0..4095, FEHER = nagy
+}
+
+// ====================== 2. KONDICIONALAS ======================
+void kondicionalas(int nyers[5]) {
+  for (int i = 0; i < 5; i++) {
+    // (a) zajszures: exponencialis mozgo atlag  uj = regi + (nyers - regi) * alfa
+    //     (ugyanaz, mint egy sok mintas atlag, de nem kell tarolni a mintakat)
+    if (simitott[i] < 0) simitott[i] = nyers[i];
+    else simitott[i] += (nyers[i] - simitott[i]) * szuroAlfa;
+
+    // (b) kalibracio + normalas: a feher..fekete tartomanyt 0..1000-re huzzuk
+    //     igy minden szenzor egyformat jelent, akkor is, ha az egyik erzekenyebb
+    int tart = kalFeher[i] - kalFekete[i];
+    if (tart < 50) tart = 50;                                  // rossz kalibracio ellen
+    long n = (long)(kalFeher[i] - simitott[i]) * 1000L / tart;
+    normalt[i] = constrain(n, 0L, 1000L);
+  }
+}
+
+// ====================== 3. POZICIO ======================
+void pozicioSzamol() {
+  // sulyozott atlag: a szenzorok helye -2, -1, 0, +1, +2 (x1000), suly = mennyire lat feketet
+  long sum = 0, wsum = 0;
+  bool valaki = false;
+  for (int i = 0; i < 5; i++) {
+    sum  += normalt[i];
+    wsum += (long)normalt[i] * (i - 2) * 1000L;
+    if (normalt[i] > vonalKuszob) valaki = true;
+  }
+  if (!valaki || sum == 0) { latVonal = false; return; }      // egyik szenzor sem lat vonalat
+  latVonal = true;
+  pozicio = (int)(wsum / sum);                                // -2000..+2000
+  if (pozicio != 0) utolsoIrany = (pozicio > 0) ? 1 : -1;
+}
+
+// ====================== 4. DONTES (PID) ======================
+float dontes() {
+  // hiba = a vonal tavolsaga a kozeptol; cel: 0
+  float hiba = pozicio;
+
+  // I: a hibak osszege -- ha tartosan egy oldalon vagyunk, lassan "megtanulja" a korrekciot
+  iOsszeg += hiba * pKi;
+  iOsszeg = constrain(iOsszeg, -iHatar, iHatar);              // anti-windup: ne fusson el
+
+  // D: a hiba valtozasa, szurve (a nyers kulonbseg zajos)
+  dSzurt += ((float)(pozicio - elozoPoz) - dSzurt) * 0.3;
+  elozoPoz = pozicio;
+
+  return pKp * hiba + iOsszeg + pKd * dSzurt;                 // u = P + I + D
+}
+
+// ====================== 5. BEAVATKOZAS ======================
+void beavatkozas(float u) {
+  int bal  = constrain((int)(pAlap + u), -255, 255);          // u > 0: vonal jobbra -> jobbra fordul
+  int jobb = constrain((int)(pAlap - u), -255, 255);
+  motor(bal, jobb);
+}
+
+// ====================== a keret ezeket hivja ======================
+void indulas() {
+  uzenet("PID + szenzorfeldolgozas indul");
+  enkoderNullaz();
+  iOsszeg = 0; dSzurt = 0; elozoPoz = 0; ciklus = 0;
+  for (int i = 0; i < 5; i++) simitott[i] = -1;
+  motor(0, 0);
+  varj(300);
+}
+
+void vezerles() {                       // 20 ms-onkent
+  int nyers[5];
+  meres(nyers);                         // 1.
+  kondicionalas(nyers);                 // 2.
+  pozicioSzamol();                      // 3.
+  if (!latVonal) {                      // nincs vonal: pörgés az utolso irany fele, I-tag torolve
+    iOsszeg = 0;
+    motor(utolsoIrany * fordulasPwm, -utolsoIrany * fordulasPwm);
+    return;
+  }
+  float u = dontes();                   // 4.
+  beavatkozas(u);                       // 5.
+
+  ciklus++;
+  if (ciklus % 50 == 0)                 // masodpercenkent egy sor a naplóba
+    uzenet("nyers=" + String(nyers[2]) + " norm=" + String(normalt[0]) + "," + String(normalt[1]) + "," + String(normalt[2]) + "," + String(normalt[3]) + "," + String(normalt[4])
+           + " poz=" + String(pozicio) + " I=" + String(iOsszeg, 1) + " u=" + String(u, 1));
+}

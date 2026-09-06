@@ -1,0 +1,45 @@
+// =====================================================================
+//  1. FELADAT -- MOTORVEZÉRLÉS
+// =====================================================================
+//
+//  A robotnak két kereke van, mindkettőn egy motor és egy enkóder.
+//  Az enkóder számolja, mennyit fordult a kerék: 408 impulzus = 1 teljes
+//  fordulat = 138,9 mm út.  Ha helyben fordulni akarsz 90 fokot, az
+//  egyik kerék 354-et megy előre, a másik 354-et hátra.
+//
+//  Amit használhatsz:
+//     motor(bal, jobb)        -255..255, negatív = hátra. Azonnal hat.
+//     menj(bal, jobb, pwm)    pontosan ennyi impulzust megy, aztán megáll.
+//                             Ez VÁR, amíg odaér.
+//     encBal, encJobb         az enkóderek állása
+//     enkoderNullaz()
+//     varj(ms)                várakozás (delay helyett)
+//     uzenet("...")           kiírás a weboldalra
+//
+//  indulas()   -> egyszer fut le, amikor megnyomod a Start gombot
+//  vezerles()  -> utána 20 ms-onként újra és újra, amíg Stop nem jön
+//
+//  FELADAT: rajzoltass a robottal egy 20 cm-es négyzetet!
+//           (1 oldal = 200 mm = 588 impulzus)
+//  NEHEZEBB: csináld meg menj() nélkül, csak motor()-ral és az enkóderrel.
+// =====================================================================
+
+void indulas() {
+  uzenet("Indulok!");
+  enkoderNullaz();
+
+  // 1 kerékfordulat előre, PWM 100-zal
+  menj(408, 408, 100);
+  varj(500);
+
+  // 90 fok jobbra, lassan (PWM 75), hogy ne kaparjon
+  menj(354, -354, 75);
+  varj(500);
+
+  uzenet("Kesz. Bal: " + String(encBal) + "  Jobb: " + String(encJobb));
+}
+
+void vezerles() {
+  // Ebben a feladatban nincs mit tenni 20 ms-onként: minden az indulas()-ban
+  // történik. A vonalkövetésnél (2. feladat) ez lesz a fontos.
+}

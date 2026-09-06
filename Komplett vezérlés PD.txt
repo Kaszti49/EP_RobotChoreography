@@ -1,0 +1,65 @@
+// ==========================================================================
+//  3. PELDA -- KOMPLETT VONALKOVETES (a keret beepitett PD-szabalyzoja kodban)
+// ==========================================================================
+//
+//  Ez UGYANAZ, amit a "Szabalyozas" ful csuszkai csinalnak (Q parancs), csak
+//  itt a szamok a kodban vannak. Innen indulva a TIED az egesz vezerles:
+//  alakitsd, boviteni szabad barmit.
+//
+//  Ami benne van:
+//    - P + D szabalyzas, SZURT derivalttal (a nyers kulonbseg zajos)
+//    - vonalvesztesnel helyben fordulas az utoljara latott irany fele
+//    - a motorok -255..255 koze korlatozva
+//
+//  A vonal helye:  vonalPozicioSzamol()  ->  -2000 (bal szel) ... 0 (kozep) ... +2000 (jobb szel)
+//                                            9999 = NINCS vonal (vonalLatszik == false)
+//  Motorok:        motor(bal, jobb), -255..255, negativ = hatra
+//
+// --------------------- HANGOLHATO SZAMOK (a csuszkak helyett) ---------------------
+// (a nevek elejen a "v" = vonalkovetes; a KP/KD nevek a keretben mar foglaltak)
+int   vAlap          = 80;     // alapsebesseg, PWM 0..255        [csuszka: alap]
+float vKp            = 0.05;   // aranyos tag,  ajanlott 0,02..0,1 [csuszka: Kp]
+float vKd            = 0.5;    // derivalo tag, ajanlott 0,2..2    [csuszka: Kd]
+float vDAlfa        = 0.30;   // a derivalt szurese: 1,0 = nincs szures, 0,1 = nagyon sima
+int   vFordulasPwm  = 80;     // vonalvesztesnel a helyben fordulas sebessege
+
+// --------------------- belso allapot ---------------------
+int   elozoPoz    = 0;
+float dSzurt      = 0;
+int   utolsoIrany = 1;        // +1 = a vonal jobbra tunt el, -1 = balra
+int   ciklus      = 0;
+
+void indulas() {
+  uzenet("Komplett vezerles indul (vAlap=" + String(vAlap) + " vKp=" + String(vKp, 3) + " vKd=" + String(vKd, 2) + ")");
+  enkoderNullaz();
+  elozoPoz = 0; dSzurt = 0; ciklus = 0;
+  motor(0, 0);
+  varj(300);
+}
+
+void vezerles() {                            // 20 ms-onkent hivja a keret
+  int poz = vonalPozicioSzamol();            // -2000..2000, vagy 9999
+
+  if (poz == 9999) {                         // NINCS VONAL: helyben fordul, amerre utoljara latta
+    motor( utolsoIrany * vFordulasPwm, -utolsoIrany * vFordulasPwm);
+    return;
+  }
+  if (poz != 0) utolsoIrany = (poz > 0) ? 1 : -1;
+
+  // PD szabalyzas:  u = vKp * poz + vKd * d,  ahol d a vonal SZURT elmozdulasa
+  dSzurt += ((float)(poz - elozoPoz) - dSzurt) * vDAlfa;
+  float u = vKp * poz + vKd * dSzurt;
+  elozoPoz = poz;
+
+  // u > 0: a vonal jobbra van -> a bal kerek gyorsabb -> jobbra fordulunk
+  int bal  = constrain((int)(vAlap + u), -255, 255);
+  int jobb = constrain((int)(vAlap - u), -255, 255);
+  motor(bal, jobb);
+
+  // OTLETEK a tovabbfejlesztesre:
+  //  - egyenesben gyorsits (ha abs(poz) < 300, vAlap helyett nagyobb)
+  //  - I-tag (osszegzett hiba) a lassu, tartos elhuzas ellen
+  //  - kanyarban a belso kereket lassitsd jobban, mint a kulsot gyorsitod
+  ciklus++;
+  if (ciklus % 50 == 0) uzenet("poz=" + String(poz) + " u=" + String(u, 1) + " bal=" + String(bal) + " jobb=" + String(jobb));
+}

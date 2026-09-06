@@ -1,0 +1,1113 @@
+<title>Rajkoreográfia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --ground:   #e9ecf1;
+    --panel:    #ffffff;
+    --panel-2:  #f4f6f9;
+    --ink:      #0f1620;
+    --ink-2:    #4d5a6b;
+    --ink-3:    #7b8798;
+    --line:     #d2d8e1;
+    --line-2:   #e4e8ee;
+    --accent:   #2f62e8;
+    --accent-soft: #e6ecfd;
+    --ok:       #17804a;
+    --warn:     #a86408;
+    --warn-soft:#fbf1dd;
+    --danger:   #c5301f;
+    --danger-soft:#fbe6e3;
+    --grid:     #d7dce4;
+    --grid-2:   #c3cad6;
+    --r1:#d8402f; --r2:#d4761a; --r3:#1a8d4c; --r4:#0d8ba3; --r5:#3363dd; --r6:#7e4ee0;
+
+    --f-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    --f-cond: "IBM Plex Sans Condensed", "IBM Plex Sans", sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:   #0d1219;
+      --panel:    #151c26;
+      --panel-2:  #1c2531;
+      --ink:      #e3e9f2;
+      --ink-2:    #a3b0c2;
+      --ink-3:    #75839a;
+      --line:     #27313f;
+      --line-2:   #202834;
+      --accent:   #6d9bff;
+      --accent-soft: #1b2740;
+      --ok:       #4cc98a;
+      --warn:     #e0a63c;
+      --warn-soft:#2c2415;
+      --danger:   #f0705f;
+      --danger-soft:#301a17;
+      --grid:     #1e2632;
+      --grid-2:   #2b3646;
+      --r1:#f0705f; --r2:#e79a44; --r3:#4cc98a; --r4:#37b8d4; --r5:#6d9bff; --r6:#a686f5;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:   #0d1219;
+    --panel:    #151c26;
+    --panel-2:  #1c2531;
+    --ink:      #e3e9f2;
+    --ink-2:    #a3b0c2;
+    --ink-3:    #75839a;
+    --line:     #27313f;
+    --line-2:   #202834;
+    --accent:   #6d9bff;
+    --accent-soft: #1b2740;
+    --ok:       #4cc98a;
+    --warn:     #e0a63c;
+    --warn-soft:#2c2415;
+    --danger:   #f0705f;
+    --danger-soft:#301a17;
+    --grid:     #1e2632;
+    --grid-2:   #2b3646;
+    --r1:#f0705f; --r2:#e79a44; --r3:#4cc98a; --r4:#37b8d4; --r5:#6d9bff; --r6:#a686f5;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--f-sans);
+    font-size: 14px;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  .eyebrow {
+    font-family: var(--f-cond);
+    font-weight: 600;
+    font-size: 11px;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+  }
+  .mono { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+
+  /* ---------- shell ---------- */
+  .app {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 392px;
+    grid-template-rows: auto minmax(0, 1fr);
+    height: 100vh;
+    gap: 0;
+  }
+  header {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    padding: 12px 18px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -.01em;
+  }
+  header .sub { color: var(--ink-3); font-size: 12.5px; }
+  header .spacer { flex: 1; }
+
+  main {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    padding: 14px 14px 14px 18px;
+    gap: 10px;
+    overflow: hidden;
+  }
+  .stage {
+    flex: 1;
+    min-height: 0;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    position: relative;
+    overflow: hidden;
+  }
+  #vaszon { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  #vaszon.fog { cursor: grabbing; }
+
+  .stage-cim {
+    position: absolute; top: 10px; left: 12px;
+    display: flex; gap: 8px; align-items: center;
+    pointer-events: none;
+  }
+  .pill {
+    font-family: var(--f-mono);
+    font-size: 11px;
+    padding: 3px 7px;
+    border-radius: 3px;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    color: var(--ink-2);
+  }
+
+  /* ---------- transport ---------- */
+  .transport {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 9px 12px;
+  }
+  .transport input[type=range] { flex: 1; min-width: 60px; accent-color: var(--accent); }
+  .ido {
+    font-family: var(--f-mono);
+    font-size: 14px;
+    font-weight: 500;
+    min-width: 108px;
+    font-variant-numeric: tabular-nums;
+  }
+  .ido small { color: var(--ink-3); font-weight: 400; }
+
+  button {
+    font-family: var(--f-sans);
+    font-size: 13px;
+    color: var(--ink);
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 5px 11px;
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--ink-3); }
+  button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button.fo { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 500; }
+  button.fo:hover { filter: brightness(1.08); }
+  button.mini { padding: 2px 7px; font-size: 12px; }
+  button:disabled { opacity: .45; cursor: default; }
+
+  /* ---------- side column ---------- */
+  aside {
+    min-width: 0;
+    overflow-y: auto;
+    background: var(--panel);
+    border-left: 1px solid var(--line);
+    padding: 0 0 40px;
+  }
+  section.blokk { border-bottom: 1px solid var(--line-2); padding: 14px 16px; }
+  section.blokk > .eyebrow { display: block; margin-bottom: 9px; }
+
+  .mezosor { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+  label.mezo { display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; color: var(--ink-2); }
+  input[type=number], input[type=text] {
+    font-family: var(--f-mono);
+    font-size: 13px;
+    background: var(--panel-2);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 4px 6px;
+    width: 100%;
+    font-variant-numeric: tabular-nums;
+  }
+  input:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+
+  /* robot chips */
+  .robotsor { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    display: flex; align-items: center; gap: 6px;
+    padding: 4px 9px 4px 6px;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: var(--panel-2);
+    cursor: pointer;
+    font-family: var(--f-mono);
+    font-size: 12.5px;
+  }
+  .chip .pont { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); font-weight: 500; }
+
+  /* step table */
+  table.lepesek { width: 100%; border-collapse: collapse; font-family: var(--f-mono); font-size: 12.5px; }
+  table.lepesek th {
+    text-align: left;
+    font-family: var(--f-cond);
+    font-size: 10.5px;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--ink-3);
+    font-weight: 600;
+    padding: 0 4px 5px;
+  }
+  table.lepesek td { padding: 2px 2px; border-top: 1px solid var(--line-2); }
+  table.lepesek input { padding: 3px 5px; font-size: 12.5px; }
+  table.lepesek td.leiras { color: var(--ink-2); font-size: 11.5px; font-family: var(--f-sans); padding-left: 6px; }
+  table.lepesek td.torol { width: 24px; text-align: right; }
+  .lepes-gombok { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+
+  /* checks */
+  .ell { display: flex; flex-direction: column; gap: 7px; }
+  .ell-tetel {
+    display: grid;
+    grid-template-columns: 8px 1fr auto;
+    gap: 9px;
+    align-items: start;
+    padding: 8px 10px;
+    border-radius: 4px;
+    background: var(--panel-2);
+    border: 1px solid var(--line-2);
+    font-size: 12.5px;
+  }
+  .ell-tetel .savo { width: 3px; border-radius: 2px; align-self: stretch; }
+  .ell-tetel.jo   { background: transparent; }
+  .ell-tetel.jo .savo { background: var(--ok); }
+  .ell-tetel.fig  { background: var(--warn-soft); border-color: transparent; }
+  .ell-tetel.fig .savo { background: var(--warn); }
+  .ell-tetel.baj  { background: var(--danger-soft); border-color: transparent; }
+  .ell-tetel.baj .savo { background: var(--danger); }
+  .ell-tetel b { font-weight: 600; }
+  .ell-tetel .reszlet { color: var(--ink-2); display: block; margin-top: 1px; }
+
+  textarea {
+    width: 100%;
+    height: 168px;
+    font-family: var(--f-mono);
+    font-size: 11.5px;
+    line-height: 1.45;
+    background: var(--panel-2);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 8px;
+    resize: vertical;
+    white-space: pre;
+    overflow: auto;
+  }
+  .magyarazat { color: var(--ink-2); font-size: 12px; margin: 8px 0 0; }
+  .magyarazat code { font-family: var(--f-mono); font-size: 11.5px; background: var(--panel-2); padding: 0 3px; border-radius: 2px; }
+  .allapotsor { font-size: 11.5px; color: var(--ink-3); margin-top: 8px; }
+
+  @media (max-width: 1080px) {
+    .app { grid-template-columns: 1fr; grid-template-rows: auto auto auto; height: auto; }
+    main { height: 68vh; }
+    aside { border-left: none; border-top: 1px solid var(--line); }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app">
+  <header>
+    <h1>Rajkoreográfia</h1>
+    <span class="sub">6 robot &middot; enkóderes PD &middot; vonal nélkül</span>
+    <span class="spacer"></span>
+    <span class="pill mono" id="mentesAllapot">helyi mentés</span>
+    <button id="gMent">Show mentése</button>
+  </header>
+
+  <main>
+    <div class="stage">
+      <canvas id="vaszon"></canvas>
+      <div class="stage-cim">
+        <span class="pill" id="palyaCimke">4000 × 5000 mm</span>
+        <span class="pill">rács 500 mm</span>
+      </div>
+    </div>
+
+    <div class="transport">
+      <button id="gJatszik" class="fo">▶ Lejátszás</button>
+      <button id="gElejere" class="mini">⏮</button>
+      <input type="range" id="idoCsuszka" min="0" max="1000" value="0" step="1" aria-label="Idővonal">
+      <span class="ido mono"><span id="idoKijelzo">0,00</span> <small>/ <span id="idoOssz">0,00</span> s</small></span>
+    </div>
+  </main>
+
+  <aside>
+    <section class="blokk">
+      <span class="eyebrow">Pálya és robothatárok</span>
+      <div class="mezosor">
+        <label class="mezo">pálya szélesség (mm)<input type="number" id="pSzel" step="100"></label>
+        <label class="mezo">pálya mélység (mm)<input type="number" id="pMely" step="100"></label>
+        <label class="mezo">VMAX (imp/s)<input type="number" id="pVmax" step="10"></label>
+        <label class="mezo">mm / impulzus<input type="number" id="pMm" step="0.0001"></label>
+        <label class="mezo">nyomtáv (mm)<input type="number" id="pNyomtav" step="0.5"></label>
+        <label class="mezo">gyorsulás (mm/s²)<input type="number" id="pGyors" step="50"></label>
+      </div>
+      <p class="magyarazat">
+        A terem mérete még nincs felmérve — állítsd be, amint tudod. A <code>VMAX</code>,
+        a <code>mm/impulzus</code> és a <code>nyomtáv</code> a hat robot közül a
+        <em>leglassabb</em> mért értéke legyen: a raj csak annyira lehet gyors, mint a leggyengébb tagja.
+      </p>
+    </section>
+
+    <section class="blokk">
+      <span class="eyebrow">Sodródás-próba</span>
+      <div style="display:flex;align-items:center;gap:10px">
+        <input type="range" id="pDrift" min="0" max="5" step="0.25" value="0" style="flex:1;accent-color:var(--accent)">
+        <span class="pill mono" id="driftCimke">0,00 %</span>
+      </div>
+      <p class="magyarazat">
+        Elrontja robotonként a kerék- és nyomtáv-adatokat ennyi százalékkal, és a valódi
+        pályát halványan a tervezett mellé rajzolja. Ez mutatja meg, mekkora <em>tartalék
+        távolságot</em> kell hagynod a robotok között. Márvány- vagy parkettapadlón kezdd
+        1&nbsp;%-kal — annyi hibát a legjobb kalibráció után is látni fogsz.
+      </p>
+    </section>
+
+    <section class="blokk">
+      <span class="eyebrow">Robot kiválasztása</span>
+      <div class="robotsor" id="robotSor"></div>
+      <div class="mezosor" style="margin-top:11px">
+        <label class="mezo">kiindulási X (mm)<input type="number" id="rX" step="10"></label>
+        <label class="mezo">kiindulási Y (mm)<input type="number" id="rY" step="10"></label>
+        <label class="mezo">irány (fok, 0 = előre)<input type="number" id="rSzog" step="5"></label>
+      </div>
+      <p class="magyarazat">A robotot a pályán is <strong>húzhatod</strong> az egérrel — ide kerül majd a ragasztószalag-jel a padlóra.</p>
+    </section>
+
+    <section class="blokk">
+      <span class="eyebrow">Lépések &mdash; <span id="lepesRobotNev">robot 1</span></span>
+      <table class="lepesek">
+        <thead>
+          <tr><th>idő ms</th><th>v mm/s</th><th>ω °/s</th><th>mit csinál</th><th></th></tr>
+        </thead>
+        <tbody id="lepesTest"></tbody>
+      </table>
+      <div class="lepes-gombok">
+        <button class="mini" id="gUjLepes">+ lépés</button>
+        <button class="mini" id="gMasolMind">másolás mind a 6-ra</button>
+        <button class="mini" id="gTukroz">tükrözve a párjára</button>
+      </div>
+      <p class="magyarazat">
+        <code>ω</code> előjele: <strong>+ = jobbra</strong> (óramutató szerint).
+        A „tükrözve” a szemközti robotra (1↔6, 2↔5, 3↔4) másolja a lépéseket ellentétes
+        fordulásokkal — szimmetrikus alakzatokhoz.
+      </p>
+    </section>
+
+    <section class="blokk">
+      <span class="eyebrow">Ellenőrzés</span>
+      <div class="ell" id="ellLista"></div>
+    </section>
+
+    <section class="blokk">
+      <span class="eyebrow">Kód exportálása</span>
+      <p class="magyarazat" style="margin-top:0">
+        Másold be a <code>show_robot.txt</code> <strong>8. blokkjába</strong>, a régi
+        <code>SHOW1…SHOW6</code> és <code>START_…</code> tömbök helyére.
+      </p>
+      <textarea id="export" readonly spellcheck="false"></textarea>
+      <div class="lepes-gombok">
+        <button class="mini" id="gMasol">Vágólapra</button>
+        <button class="mini" id="gAlap">Vissza a demóra</button>
+      </div>
+      <div class="allapotsor" id="masolAllapot"></div>
+    </section>
+  </aside>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var DT = 0.02;                 // 20 ms - ugyanaz a ciklusido, mint a roboton
+  var ROBOT_ATMERO = 150;        // mm, a vaz atmeroje
+  var UTKOZES_TARTALEK = 60;     // mm, ennyivel kozelebb mar utkozesnek szamit
+  var SZEL_TARTALEK = 300;       // mm, ennyit hagyunk a palya szelen
+  var SZINEK = ["--r1", "--r2", "--r3", "--r4", "--r5", "--r6"];
+
+  // ---------------------------------------------------------------- alapallapot
+  function demoAllapot() {
+    var xs = [-1000, -600, -200, 200, 600, 1000];
+    var fordul = [-45, -30, -15, 15, 30, 45];
+    var robotok = [];
+    for (var i = 0; i < 6; i++) {
+      var f = fordul[i];
+      var visszaFordulas = (i < 3) ? 90 : -90;
+      robotok.push({
+        nev: "robot " + (i + 1),
+        x: xs[i], y: -1500, szog: 0,
+        lepesek: [
+          { ms: 2000, v: 0,   w: 0 },
+          { ms: 1000, v: 0,   w: f },
+          { ms: 3000, v: 160, w: 0 },
+          { ms: 1000, v: 0,   w: -f },
+          { ms: 1000, v: 0,   w: 0 },
+          { ms: 2000, v: 0,   w: visszaFordulas },
+          { ms: 3800, v: 160, w: 0 },
+          { ms: 1000, v: 0,   w: 0 }
+        ]
+      });
+    }
+    return {
+      palyaSzelesseg: 4000,
+      palyaMelyseg: 5000,
+      vmax: 600,
+      mmPerImp: 0.3404,
+      nyomtav: 153,
+      gyorsulas: 600,
+      szoggyorsulas: 360,
+      drift: 0,
+      robotok: robotok
+    };
+  }
+
+  var A = demoAllapot();
+  var valasztott = 0;
+  var t = 0, jatszik = false, utolsoKeret = 0;
+  var palyak = null, hossz = 0;
+  var db = null, dbDoc = null, sajatIras = 0;
+
+  // ---------------------------------------------------------------- szimulacio
+  // Pontosan azt szamolja, amit a robot vezerles() fuggvenye csinal:
+  // gyorsulas-korlat -> kinematika -> sebesseg-plafon -> pozicio.
+  function driftFaktor(i, k, szazalek) {
+    if (!szazalek) return 1;
+    var s = Math.sin((i + 1) * 12.9898 + k * 78.233) * 43758.5453;
+    var r = s - Math.floor(s);
+    return 1 + (r * 2 - 1) * szazalek / 100;
+  }
+
+  function robotIdeje(r) {
+    var s = 0;
+    for (var i = 0; i < r.lepesek.length; i++) s += Math.max(0, r.lepesek[i].ms | 0);
+    return s;
+  }
+
+  function parancs(r, ms) {
+    var t0 = 0;
+    for (var i = 0; i < r.lepesek.length; i++) {
+      var L = r.lepesek[i];
+      t0 += Math.max(0, L.ms | 0);
+      if (ms < t0) return { v: +L.v || 0, w: +L.w || 0, idx: i };
+    }
+    return { v: 0, w: 0, idx: -1 };
+  }
+
+  function szimulal() {
+    hossz = 0;
+    for (var i = 0; i < 6; i++) hossz = Math.max(hossz, robotIdeje(A.robotok[i]));
+    hossz += 600;                                     // kis levezeto
+
+    var n = Math.ceil((hossz / 1000) / DT) + 1;
+    palyak = [];
+
+    for (var ri = 0; ri < 6; ri++) {
+      var r = A.robotok[ri];
+      var fB = driftFaktor(ri, 0, A.drift);
+      var fJ = driftFaktor(ri, 1, A.drift);
+      var fN = driftFaktor(ri, 2, A.drift);
+
+      var terv = { x: r.x, y: r.y, szog: r.szog };    // amit a robot HISZ magarol
+      var valo = { x: r.x, y: r.y, szog: r.szog };    // ami tenyleg tortenik
+      var vAkt = 0, wAkt = 0;
+
+      var p = { terv: new Float32Array(n * 2), valo: new Float32Array(n * 2),
+                szog: new Float32Array(n), tuligeny: new Uint8Array(n), lepes: new Int8Array(n) };
+
+      for (var k = 0; k < n; k++) {
+        var ms = k * DT * 1000;
+        var c = parancs(r, ms);
+
+        // 1. gyorsulas-korlat (csuszasvedelem)
+        var dvMax = A.gyorsulas * DT;
+        vAkt += Math.max(-dvMax, Math.min(dvMax, c.v - vAkt));
+        var dwMax = A.szoggyorsulas * DT;
+        wAkt += Math.max(-dwMax, Math.min(dwMax, c.w - wAkt));
+
+        // 2. kinematika: a robot SAJAT (feltetelezett) adataival szamol
+        var wRad = wAkt * Math.PI / 180;
+        var fel = A.nyomtav / 2;
+        var impB = (vAkt + wRad * fel) / A.mmPerImp;
+        var impJ = (vAkt - wRad * fel) / A.mmPerImp;
+
+        // 3. sebesseg-plafon: aranyosan, hogy az alak ne valtozzon
+        var nagy = Math.max(Math.abs(impB), Math.abs(impJ));
+        p.tuligeny[k] = nagy > A.vmax ? 1 : 0;
+        if (nagy > A.vmax) { var sk = A.vmax / nagy; impB *= sk; impJ *= sk; }
+
+        // 4a. amit a robot hisz: a sajat adataival visszaszamolva
+        var vT = (impB + impJ) / 2 * A.mmPerImp;
+        var wT = (impB - impJ) * A.mmPerImp / A.nyomtav;
+        terv.szog += wT * DT * 180 / Math.PI;
+        terv.x += vT * DT * Math.sin(terv.szog * Math.PI / 180);
+        terv.y += vT * DT * Math.cos(terv.szog * Math.PI / 180);
+
+        // 4b. ami tenyleg tortenik: a VALODI kerekmerettel es nyomtavval
+        var mmB = impB * A.mmPerImp * fB;
+        var mmJ = impJ * A.mmPerImp * fJ;
+        var vV = (mmB + mmJ) / 2;
+        var wV = (mmB - mmJ) / (A.nyomtav * fN);
+        valo.szog += wV * DT * 180 / Math.PI;
+        valo.x += vV * DT * Math.sin(valo.szog * Math.PI / 180);
+        valo.y += vV * DT * Math.cos(valo.szog * Math.PI / 180);
+
+        p.terv[k * 2] = terv.x; p.terv[k * 2 + 1] = terv.y;
+        p.valo[k * 2] = valo.x; p.valo[k * 2 + 1] = valo.y;
+        p.szog[k] = valo.szog;
+        p.lepes[k] = c.idx;
+      }
+      palyak.push(p);
+    }
+
+    ellenorzes();
+  }
+
+  // ---------------------------------------------------------------- ellenorzes
+  var ellEredmeny = [];
+
+  function ellenorzes() {
+    ellEredmeny = [];
+    var n = palyak[0].terv.length / 2;
+    var felSzel = A.palyaSzelesseg / 2, felMely = A.palyaMelyseg / 2;
+    var sugar = ROBOT_ATMERO / 2;
+
+    var minTav = Infinity, minTavT = 0, minPar = null;
+    var kiT = -1, kiRobot = 0;
+    var gyorsRobotok = {};
+
+    for (var k = 0; k < n; k++) {
+      for (var i = 0; i < 6; i++) {
+        var xi = palyak[i].valo[k * 2], yi = palyak[i].valo[k * 2 + 1];
+        if (kiT < 0 && (Math.abs(xi) + sugar > felSzel - SZEL_TARTALEK ||
+                        Math.abs(yi) + sugar > felMely - SZEL_TARTALEK)) {
+          kiT = k * DT; kiRobot = i;
+        }
+        if (palyak[i].tuligeny[k]) gyorsRobotok[i] = true;
+        for (var j = i + 1; j < 6; j++) {
+          var dx = xi - palyak[j].valo[k * 2], dy = yi - palyak[j].valo[k * 2 + 1];
+          var d = Math.sqrt(dx * dx + dy * dy);
+          if (d < minTav) { minTav = d; minTavT = k * DT; minPar = [i, j]; }
+        }
+      }
+    }
+
+    // 1. utkozes
+    var hatar = ROBOT_ATMERO + UTKOZES_TARTALEK;
+    if (minPar) {
+      if (minTav < ROBOT_ATMERO) {
+        ellEredmeny.push({ szint: "baj", cim: "Ütközés",
+          szoveg: "robot " + (minPar[0] + 1) + " és " + (minPar[1] + 1) + " összeér " +
+                  fmt(minTav, 0) + " mm-re, " + fmt(minTavT, 1) + " s-nál.", ido: minTavT });
+      } else if (minTav < hatar) {
+        ellEredmeny.push({ szint: "fig", cim: "Szoros elhaladás",
+          szoveg: "robot " + (minPar[0] + 1) + " és " + (minPar[1] + 1) + " " + fmt(minTav, 0) +
+                  " mm-re kerül " + fmt(minTavT, 1) + " s-nál (" + hatar + " mm alatt kockázatos).", ido: minTavT });
+      } else {
+        ellEredmeny.push({ szint: "jo", cim: "Távolságtartás rendben",
+          szoveg: "a legszűkebb hely " + fmt(minTav, 0) + " mm (robot " + (minPar[0] + 1) +
+                  "–" + (minPar[1] + 1) + ", " + fmt(minTavT, 1) + " s).", ido: minTavT });
+      }
+    }
+
+    // 2. palyaelhagyas
+    if (kiT >= 0) {
+      ellEredmeny.push({ szint: "baj", cim: "Kimegy a pályáról",
+        szoveg: "robot " + (kiRobot + 1) + " " + fmt(kiT, 1) + " s-nál eléri a " +
+                SZEL_TARTALEK + " mm-es biztonsági sávot.", ido: kiT });
+    } else {
+      ellEredmeny.push({ szint: "jo", cim: "Pályán belül",
+        szoveg: "mind a hat robot végig " + SZEL_TARTALEK + " mm-nél beljebb marad." });
+    }
+
+    // 3. sebesseghatar
+    var gyorsLista = Object.keys(gyorsRobotok).map(function (i) { return +i + 1; });
+    if (gyorsLista.length) {
+      ellEredmeny.push({ szint: "baj", cim: "Túl gyors lépés",
+        szoveg: "robot " + gyorsLista.join(", ") + " kerék-sebessége meghaladná a VMAX " +
+                A.vmax + " imp/s értéket — a robot lelassítja, és kiesik a szinkronból. Csökkentsd a v vagy ω értéket." });
+    } else {
+      var maxKerek = 0;
+      for (var ri = 0; ri < 6; ri++) {
+        for (var li = 0; li < A.robotok[ri].lepesek.length; li++) {
+          var L = A.robotok[ri].lepesek[li];
+          var w = (+L.w || 0) * Math.PI / 180;
+          maxKerek = Math.max(maxKerek, Math.abs(((+L.v || 0) + w * A.nyomtav / 2) / A.mmPerImp),
+                                        Math.abs(((+L.v || 0) - w * A.nyomtav / 2) / A.mmPerImp));
+        }
+      }
+      ellEredmeny.push({ szint: maxKerek > A.vmax * 0.9 ? "fig" : "jo", cim: "Sebességtartalék",
+        szoveg: "a legnagyobb kerék-sebesség " + fmt(maxKerek, 0) + " imp/s, a VMAX " + A.vmax +
+                " imp/s (" + fmt(maxKerek / A.vmax * 100, 0) + " % kihasználva)." });
+    }
+
+    // 4. hossz-eltres a robotok kozott
+    var idok = A.robotok.map(robotIdeje);
+    var minI = Math.min.apply(null, idok), maxI = Math.max.apply(null, idok);
+    if (maxI - minI > 0) {
+      ellEredmeny.push({ szint: "fig", cim: "Eltérő hosszúságú koreográfiák",
+        szoveg: "a leghosszabb " + fmt(maxI / 1000, 2) + " s, a legrövidebb " + fmt(minI / 1000, 2) +
+                " s. A korábban végző robotok állva várnak — ha ez nem szándékos, told fel a rövidebbeket." });
+    }
+
+    rajzolEllenorzes();
+  }
+
+  // ---------------------------------------------------------------- rajzolas
+  var vaszon = document.getElementById("vaszon");
+  var ctx = vaszon.getContext("2d");
+  var skala = 1, kx = 0, ky = 0;
+
+  function szin(i) { return getComputedStyle(document.documentElement).getPropertyValue(SZINEK[i]).trim(); }
+  function tok(nev) { return getComputedStyle(document.documentElement).getPropertyValue(nev).trim(); }
+
+  function meretez() {
+    var arany = window.devicePixelRatio || 1;
+    var r = vaszon.getBoundingClientRect();
+    vaszon.width = Math.max(1, Math.round(r.width * arany));
+    vaszon.height = Math.max(1, Math.round(r.height * arany));
+    ctx.setTransform(arany, 0, 0, arany, 0, 0);
+    var pad = 26;
+    skala = Math.min((r.width - pad * 2) / A.palyaSzelesseg, (r.height - pad * 2) / A.palyaMelyseg);
+    kx = r.width / 2;
+    ky = r.height / 2;
+    rajzol();
+  }
+  function vx(x) { return kx + x * skala; }
+  function vy(y) { return ky - y * skala; }
+  function mmX(px) { return (px - kx) / skala; }
+  function mmY(py) { return (ky - py) / skala; }
+
+  function rajzol() {
+    if (!palyak) return;
+    var r = vaszon.getBoundingClientRect();
+    ctx.clearRect(0, 0, r.width, r.height);
+
+    var felSzel = A.palyaSzelesseg / 2, felMely = A.palyaMelyseg / 2;
+
+    // racs
+    ctx.lineWidth = 1;
+    for (var g = -Math.floor(felSzel / 500) * 500; g <= felSzel; g += 500) {
+      ctx.strokeStyle = (g % 1000 === 0) ? tok("--grid-2") : tok("--grid");
+      ctx.beginPath(); ctx.moveTo(vx(g), vy(-felMely)); ctx.lineTo(vx(g), vy(felMely)); ctx.stroke();
+    }
+    for (var h = -Math.floor(felMely / 500) * 500; h <= felMely; h += 500) {
+      ctx.strokeStyle = (h % 1000 === 0) ? tok("--grid-2") : tok("--grid");
+      ctx.beginPath(); ctx.moveTo(vx(-felSzel), vy(h)); ctx.lineTo(vx(felSzel), vy(h)); ctx.stroke();
+    }
+
+    // palyahatar + biztonsagi sav
+    ctx.strokeStyle = tok("--ink-3");
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(vx(-felSzel), vy(felMely), A.palyaSzelesseg * skala, A.palyaMelyseg * skala);
+    ctx.setLineDash([5, 5]);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = tok("--danger");
+    ctx.globalAlpha = 0.5;
+    ctx.strokeRect(vx(-felSzel + SZEL_TARTALEK), vy(felMely - SZEL_TARTALEK),
+                   (A.palyaSzelesseg - 2 * SZEL_TARTALEK) * skala, (A.palyaMelyseg - 2 * SZEL_TARTALEK) * skala);
+    ctx.globalAlpha = 1;
+    ctx.setLineDash([]);
+
+    var n = palyak[0].terv.length / 2;
+    var k = Math.min(n - 1, Math.max(0, Math.round(t / DT)));
+
+    // nyomvonalak
+    for (var i = 0; i < 6; i++) {
+      var c = szin(i);
+      if (A.drift > 0) {
+        ctx.strokeStyle = c; ctx.globalAlpha = 0.28; ctx.lineWidth = 1;
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        for (var a = 0; a <= k; a++) {
+          var px = vx(palyak[i].terv[a * 2]), py = vy(palyak[i].terv[a * 2 + 1]);
+          a === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+        }
+        ctx.stroke(); ctx.setLineDash([]);
+      }
+      ctx.strokeStyle = c; ctx.globalAlpha = 0.75; ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      for (var b = 0; b <= k; b++) {
+        var qx = vx(palyak[i].valo[b * 2]), qy = vy(palyak[i].valo[b * 2 + 1]);
+        b === 0 ? ctx.moveTo(qx, qy) : ctx.lineTo(qx, qy);
+      }
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    // kiindulasi jelek
+    ctx.globalAlpha = 0.55;
+    for (var s = 0; s < 6; s++) {
+      var sx = vx(A.robotok[s].x), sy = vy(A.robotok[s].y);
+      ctx.strokeStyle = szin(s); ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(sx - 6, sy); ctx.lineTo(sx + 6, sy);
+      ctx.moveTo(sx, sy - 6); ctx.lineTo(sx, sy + 6);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // robotok
+    for (var m = 0; m < 6; m++) rajzolRobot(m, palyak[m].valo[k * 2], palyak[m].valo[k * 2 + 1], palyak[m].szog[k]);
+  }
+
+  function rajzolRobot(i, x, y, szogFok) {
+    var R = ROBOT_ATMERO / 2 * skala;
+    var px = vx(x), py = vy(y);
+    var c = szin(i);
+    var rad = szogFok * Math.PI / 180;
+
+    ctx.save();
+    ctx.translate(px, py);
+    ctx.rotate(rad);                        // +szog = jobbra, a kepernyon oramutato szerint
+
+    ctx.beginPath(); ctx.arc(0, 0, R, 0, Math.PI * 2);
+    ctx.fillStyle = c; ctx.globalAlpha = 0.2; ctx.fill();
+    ctx.globalAlpha = 1; ctx.strokeStyle = c; ctx.lineWidth = 1.6; ctx.stroke();
+
+    // kerekek (a nyomtav vegein) - ez mutatja, melyik a "hatso" tengely
+    var fel = A.nyomtav / 2 * skala, kSz = Math.max(2, R * 0.22), kH = Math.max(4, R * 0.5);
+    ctx.fillStyle = c;
+    ctx.fillRect(-fel - kSz / 2, -kH / 2, kSz, kH);
+    ctx.fillRect(fel - kSz / 2, -kH / 2, kSz, kH);
+
+    // orr: a menetirany
+    ctx.beginPath();
+    ctx.moveTo(0, -R * 0.95);
+    ctx.lineTo(-R * 0.34, -R * 0.32);
+    ctx.lineTo(R * 0.34, -R * 0.32);
+    ctx.closePath();
+    ctx.fillStyle = c; ctx.fill();
+    ctx.restore();
+
+    if (R > 9) {
+      ctx.fillStyle = tok("--panel");
+      ctx.beginPath(); ctx.arc(px, py, Math.min(9, R * 0.42), 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = c;
+      ctx.font = "600 11px " + "IBM Plex Mono, monospace";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(String(i + 1), px, py + 0.5);
+    }
+  }
+
+  // ---------------------------------------------------------------- feluletek
+  function fmt(v, tizedes) {
+    if (!isFinite(v)) return "–";
+    return v.toFixed(tizedes).replace(".", ",");
+  }
+
+  function rajzolEllenorzes() {
+    var el = document.getElementById("ellLista");
+    el.innerHTML = "";
+    ellEredmeny.forEach(function (e) {
+      var d = document.createElement("div");
+      d.className = "ell-tetel " + e.szint;
+      var ugras = (e.ido != null) ? '<button class="mini" data-ido="' + e.ido + '">ugrás</button>' : "<span></span>";
+      d.innerHTML = '<span class="savo"></span><span><b>' + e.cim + '</b><span class="reszlet">' +
+                    e.szoveg + "</span></span>" + ugras;
+      el.appendChild(d);
+    });
+    el.querySelectorAll("button[data-ido]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        jatszik = false; frissitJatszikGomb();
+        allitIdo(parseFloat(b.dataset.ido));
+      });
+    });
+  }
+
+  function rajzolRobotSor() {
+    var el = document.getElementById("robotSor");
+    el.innerHTML = "";
+    for (var i = 0; i < 6; i++) {
+      (function (i) {
+        var b = document.createElement("button");
+        b.className = "chip";
+        b.setAttribute("aria-pressed", i === valasztott ? "true" : "false");
+        b.innerHTML = '<span class="pont" style="background:' + szin(i) + '"></span>' + (i + 1);
+        b.addEventListener("click", function () { valasztott = i; rajzolRobotSor(); rajzolRobotMezok(); rajzolLepesek(); });
+        el.appendChild(b);
+      })(i);
+    }
+  }
+
+  function rajzolRobotMezok() {
+    var r = A.robotok[valasztott];
+    document.getElementById("rX").value = Math.round(r.x);
+    document.getElementById("rY").value = Math.round(r.y);
+    document.getElementById("rSzog").value = Math.round(r.szog);
+    document.getElementById("lepesRobotNev").textContent = "robot " + (valasztott + 1);
+  }
+
+  function lepesLeiras(L) {
+    var v = +L.v || 0, w = +L.w || 0, mp = (Math.max(0, L.ms | 0)) / 1000;
+    if (!v && !w) return "áll " + fmt(mp, 1) + " s";
+    if (v && !w) return (v > 0 ? "előre " : "hátra ") + fmt(Math.abs(v) * mp, 0) + " mm";
+    if (!v && w) return "fordul " + fmt(Math.abs(w) * mp, 0) + "° " + (w > 0 ? "jobbra" : "balra");
+    var sugar = v / (w * Math.PI / 180);
+    return "ív, R=" + fmt(Math.abs(sugar), 0) + " mm " + (w > 0 ? "jobbra" : "balra");
+  }
+
+  function rajzolLepesek() {
+    var test = document.getElementById("lepesTest");
+    test.innerHTML = "";
+    var r = A.robotok[valasztott];
+    r.lepesek.forEach(function (L, li) {
+      var tr = document.createElement("tr");
+      tr.innerHTML =
+        '<td><input type="number" step="100" value="' + L.ms + '" data-m="ms"></td>' +
+        '<td><input type="number" step="10" value="' + L.v + '" data-m="v"></td>' +
+        '<td><input type="number" step="5" value="' + L.w + '" data-m="w"></td>' +
+        '<td class="leiras">' + lepesLeiras(L) + "</td>" +
+        '<td class="torol"><button class="mini" title="lépés törlése">×</button></td>';
+      tr.querySelectorAll("input").forEach(function (inp) {
+        inp.addEventListener("input", function () {
+          var ertek = parseFloat(inp.value);
+          if (isNaN(ertek)) return;
+          L[inp.dataset.m] = inp.dataset.m === "ms" ? Math.max(0, Math.round(ertek)) : ertek;
+          tr.querySelector(".leiras").textContent = lepesLeiras(L);
+          ujraszamol();
+        });
+      });
+      tr.querySelector("button").addEventListener("click", function () {
+        r.lepesek.splice(li, 1);
+        if (!r.lepesek.length) r.lepesek.push({ ms: 1000, v: 0, w: 0 });
+        rajzolLepesek(); ujraszamol();
+      });
+      test.appendChild(tr);
+    });
+  }
+
+  function exportKod() {
+    var s = "";
+    for (var i = 0; i < 6; i++) {
+      var r = A.robotok[i];
+      s += "const Lepes SHOW" + (i + 1) + "[] = {\n";
+      var sorok = r.lepesek.map(function (L) {
+        return "  {" + pad(Math.max(0, L.ms | 0), 5) + ", " + pad(fix(L.v), 6) + ", " + pad(fix(L.w), 6) + "}";
+      });
+      s += sorok.join(",\n") + "\n};\n";
+    }
+    s += "\nconst Lepes* const SHOW[6] = { SHOW1, SHOW2, SHOW3, SHOW4, SHOW5, SHOW6 };\n";
+    s += "const int SHOW_DB[6] = {\n";
+    s += "  sizeof(SHOW1) / sizeof(Lepes), sizeof(SHOW2) / sizeof(Lepes),\n";
+    s += "  sizeof(SHOW3) / sizeof(Lepes), sizeof(SHOW4) / sizeof(Lepes),\n";
+    s += "  sizeof(SHOW5) / sizeof(Lepes), sizeof(SHOW6) / sizeof(Lepes)\n};\n\n";
+    s += "const float START_X[6]    = { " + A.robotok.map(function (r) { return pad(Math.round(r.x), 5); }).join(", ") + " };\n";
+    s += "const float START_Y[6]    = { " + A.robotok.map(function (r) { return pad(Math.round(r.y), 5); }).join(", ") + " };\n";
+    s += "const float START_SZOG[6] = { " + A.robotok.map(function (r) { return pad(Math.round(r.szog), 5); }).join(", ") + " };\n";
+    document.getElementById("export").value = s;
+  }
+  function fix(v) { var n = +v || 0; return (n % 1 === 0) ? String(n) : n.toFixed(1); }
+  function pad(v, sz) { var s = String(v); while (s.length < sz) s = " " + s; return s; }
+
+  // ---------------------------------------------------------------- vezerles
+  function ujraszamol() { szimulal(); allitCsuszkaHatar(); exportKod(); rajzol(); ment(); }
+
+  function allitCsuszkaHatar() {
+    var cs = document.getElementById("idoCsuszka");
+    cs.max = Math.round(hossz);
+    if (t * 1000 > hossz) t = hossz / 1000;
+    cs.value = Math.round(t * 1000);
+    document.getElementById("idoOssz").textContent = fmt(hossz / 1000, 2);
+    document.getElementById("idoKijelzo").textContent = fmt(t, 2);
+  }
+  function allitIdo(uj) {
+    t = Math.max(0, Math.min(hossz / 1000, uj));
+    document.getElementById("idoCsuszka").value = Math.round(t * 1000);
+    document.getElementById("idoKijelzo").textContent = fmt(t, 2);
+    rajzol();
+  }
+  function frissitJatszikGomb() {
+    document.getElementById("gJatszik").textContent = jatszik ? "❚❚ Szünet" : "▶ Lejátszás";
+  }
+
+  function keret(most) {
+    if (jatszik) {
+      var d = utolsoKeret ? (most - utolsoKeret) / 1000 : 0;
+      allitIdo(t + d);
+      if (t >= hossz / 1000) { jatszik = false; frissitJatszikGomb(); }
+    }
+    utolsoKeret = most;
+    requestAnimationFrame(keret);
+  }
+
+  // ---------------------------------------------------------------- mentes
+  var MENTES_KULCS = "rajkoreografia-v1";
+
+  function ment() {
+    try { localStorage.setItem(MENTES_KULCS, JSON.stringify(A)); } catch (e) { /* privát ablak */ }
+  }
+  function betoltHelyi() {
+    try {
+      var s = localStorage.getItem(MENTES_KULCS);
+      if (s) beolvas(JSON.parse(s));
+    } catch (e) { /* semmi baj, marad a demó */ }
+  }
+  function beolvas(o) {
+    if (!o || !Array.isArray(o.robotok) || o.robotok.length !== 6) return false;
+    A = Object.assign(demoAllapot(), o);
+    return true;
+  }
+
+  function jelez(szoveg) { document.getElementById("mentesAllapot").textContent = szoveg; }
+
+  async function dbInit() {
+    try {
+      db = await claude.use("db");
+    } catch (e) { db = null; }
+    if (!db) { jelez("helyi mentés"); return; }
+    dbDoc = db.doc("show/koreografia");
+    jelez("közös mentés");
+    dbDoc.onSnapshot(function (snap) {
+      if (!snap.exists) return;
+      var d = snap.data();
+      if (!d || !d.json) return;
+      if (Date.now() - sajatIras < 2500) return;      // a sajat mentesunk visszhangja
+      try {
+        if (beolvas(JSON.parse(d.json))) {
+          mindentUjrarajzol();
+          jelez("közös mentés · frissítve");
+        }
+      } catch (e) { /* hibás doc, marad a mostani */ }
+    }, function () { jelez("helyi mentés"); });
+  }
+
+  async function mentesGomb() {
+    ment();
+    if (!dbDoc) { jelez("mentve (helyben)"); return; }
+    sajatIras = Date.now();
+    try {
+      await dbDoc.set({ json: JSON.stringify(A), mikor: new Date().toISOString() });
+      jelez("mentve · a csapat is látja");
+    } catch (e) {
+      jelez(e && e.code === "not_granted" ? "mentve (helyben)" : "a közös mentés nem sikerült");
+    }
+  }
+
+  function mindentUjrarajzol() {
+    document.getElementById("pSzel").value = A.palyaSzelesseg;
+    document.getElementById("pMely").value = A.palyaMelyseg;
+    document.getElementById("pVmax").value = A.vmax;
+    document.getElementById("pMm").value = A.mmPerImp;
+    document.getElementById("pNyomtav").value = A.nyomtav;
+    document.getElementById("pGyors").value = A.gyorsulas;
+    document.getElementById("pDrift").value = A.drift;
+    document.getElementById("driftCimke").textContent = fmt(A.drift, 2) + " %";
+    document.getElementById("palyaCimke").textContent = A.palyaSzelesseg + " × " + A.palyaMelyseg + " mm";
+    rajzolRobotSor(); rajzolRobotMezok(); rajzolLepesek();
+    szimulal(); allitCsuszkaHatar(); exportKod(); meretez();
+  }
+
+  // ---------------------------------------------------------------- esemenyek
+  function kotMezo(id, kulcs, utana) {
+    var el = document.getElementById(id);
+    el.addEventListener("input", function () {
+      var v = parseFloat(el.value);
+      if (isNaN(v)) return;
+      A[kulcs] = v;
+      if (utana) utana();
+      ujraszamol();
+    });
+  }
+  kotMezo("pSzel", "palyaSzelesseg", function () {
+    document.getElementById("palyaCimke").textContent = A.palyaSzelesseg + " × " + A.palyaMelyseg + " mm"; meretez();
+  });
+  kotMezo("pMely", "palyaMelyseg", function () {
+    document.getElementById("palyaCimke").textContent = A.palyaSzelesseg + " × " + A.palyaMelyseg + " mm"; meretez();
+  });
+  kotMezo("pVmax", "vmax");
+  kotMezo("pMm", "mmPerImp");
+  kotMezo("pNyomtav", "nyomtav");
+  kotMezo("pGyors", "gyorsulas");
+
+  document.getElementById("pDrift").addEventListener("input", function (e) {
+    A.drift = parseFloat(e.target.value);
+    document.getElementById("driftCimke").textContent = fmt(A.drift, 2) + " %";
+    ujraszamol();
+  });
+
+  ["rX", "rY", "rSzog"].forEach(function (id) {
+    document.getElementById(id).addEventListener("input", function (e) {
+      var v = parseFloat(e.target.value);
+      if (isNaN(v)) return;
+      A.robotok[valasztott][id === "rX" ? "x" : id === "rY" ? "y" : "szog"] = v;
+      ujraszamol();
+    });
+  });
+
+  document.getElementById("gUjLepes").addEventListener("click", function () {
+    A.robotok[valasztott].lepesek.push({ ms: 1000, v: 0, w: 0 });
+    rajzolLepesek(); ujraszamol();
+  });
+  document.getElementById("gMasolMind").addEventListener("click", function () {
+    var forras = JSON.stringify(A.robotok[valasztott].lepesek);
+    for (var i = 0; i < 6; i++) A.robotok[i].lepesek = JSON.parse(forras);
+    rajzolLepesek(); ujraszamol();
+  });
+  document.getElementById("gTukroz").addEventListener("click", function () {
+    var par = 5 - valasztott;
+    A.robotok[par].lepesek = A.robotok[valasztott].lepesek.map(function (L) {
+      return { ms: L.ms, v: L.v, w: -(+L.w || 0) };
+    });
+    valasztott = par;
+    rajzolRobotSor(); rajzolRobotMezok(); rajzolLepesek(); ujraszamol();
+  });
+
+  document.getElementById("gJatszik").addEventListener("click", function () {
+    if (t >= hossz / 1000) allitIdo(0);
+    jatszik = !jatszik; frissitJatszikGomb();
+  });
+  document.getElementById("gElejere").addEventListener("click", function () { allitIdo(0); });
+  document.getElementById("idoCsuszka").addEventListener("input", function (e) {
+    jatszik = false; frissitJatszikGomb();
+    allitIdo(parseFloat(e.target.value) / 1000);
+  });
+
+  document.getElementById("gMent").addEventListener("click", mentesGomb);
+  document.getElementById("gAlap").addEventListener("click", function () {
+    A = demoAllapot(); valasztott = 0; t = 0;
+    mindentUjrarajzol(); ment();
+  });
+  document.getElementById("gMasol").addEventListener("click", function () {
+    var ta = document.getElementById("export");
+    ta.select();
+    navigator.clipboard.writeText(ta.value).then(function () {
+      document.getElementById("masolAllapot").textContent = "A kód a vágólapon — illeszd a show_robot.txt 8. blokkjába.";
+    }, function () {
+      document.getElementById("masolAllapot").textContent = "Nem sikerült a vágólapra másolni — jelöld ki és Ctrl+C.";
+    });
+  });
+
+  // huzas a vasznon: a kiindulasi hely allitasa
+  var huz = -1;
+  vaszon.addEventListener("pointerdown", function (e) {
+    var r = vaszon.getBoundingClientRect();
+    var mx = mmX(e.clientX - r.left), my = mmY(e.clientY - r.top);
+    for (var i = 0; i < 6; i++) {
+      var dx = mx - A.robotok[i].x, dy = my - A.robotok[i].y;
+      if (Math.sqrt(dx * dx + dy * dy) < ROBOT_ATMERO) {
+        huz = i; valasztott = i;
+        vaszon.classList.add("fog");
+        vaszon.setPointerCapture(e.pointerId);
+        rajzolRobotSor(); rajzolRobotMezok(); rajzolLepesek();
+        break;
+      }
+    }
+  });
+  vaszon.addEventListener("pointermove", function (e) {
+    if (huz < 0) return;
+    var r = vaszon.getBoundingClientRect();
+    A.robotok[huz].x = Math.round(mmX(e.clientX - r.left) / 10) * 10;
+    A.robotok[huz].y = Math.round(mmY(e.clientY - r.top) / 10) * 10;
+    rajzolRobotMezok();
+    ujraszamol();
+  });
+  vaszon.addEventListener("pointerup", function () { huz = -1; vaszon.classList.remove("fog"); });
+  vaszon.addEventListener("pointercancel", function () { huz = -1; vaszon.classList.remove("fog"); });
+
+  window.addEventListener("resize", meretez);
+  if (window.matchMedia) {
+    var mq = window.matchMedia("(prefers-color-scheme: dark)");
+    if (mq.addEventListener) mq.addEventListener("change", function () { rajzolRobotSor(); rajzol(); });
+  }
+
+  // ---------------------------------------------------------------- indulas
+  betoltHelyi();
+  mindentUjrarajzol();
+  requestAnimationFrame(keret);
+  if (window.claude && typeof window.claude.use === "function") dbInit();
+})();
+</script>

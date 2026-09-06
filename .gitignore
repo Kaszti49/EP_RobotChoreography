@@ -1,0 +1,15 @@
+# rendszer-szemet
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# szerkeszto
+*.swp
+*~
+.vscode/
+.idea/
+
+# ideiglenes forditasi maradek
+*.o
+*.obj
+*.exe
