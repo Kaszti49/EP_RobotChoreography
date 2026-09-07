@@ -153,17 +153,87 @@ Ha valamelyik enkóder rossz irányba számolt: Műszerfal → *Robot beállít�
 8:25:55 ======================================
 
 We put the robot on the surface without the tapes and then placed them on the tape line the first is without on the line and the 2nd and 3rd are on the line. The Robot only rotated roughly 2.5 times to the right and 2.5 to the left in one session.
+
 **K3 — feed-forward**
+First stats:
+const int PWM_DB = 4;
+int pwmLista[PWM_DB] = { 60, 80, 100, 120};
+int BEALL_MS = 200;    // ennyi ideig gyorsul be a PWM-re
+int MERES_MS = 250;    // ezen az ablakon merjuk a sebesseget
 
-| | bal | jobb |
-|---|---|---|
-| KFF (PWM / (imp/s)) | | |
-| illesztett holtsáv | | |
-| imp/s PWM 240-nél | | |
+9:09:23 K3 -- PWM/sebesseg jelleggorbe. Kell kb. 2 m szabad hely!
+9:09:23 Indulas 3 mp mulva, NE nyulj a robothoz.
+9:09:26 --- ELORE ---
+9:09:27 PWM 60 -> bal 709 imp/s, jobb 705 imp/s
+9:09:27 PWM 80 -> bal 1200 imp/s, jobb 1280 imp/s
+9:09:28 PWM 100 -> bal 1664 imp/s, jobb 1708 imp/s
+9:09:28 PWM 120 -> bal 2168 imp/s, jobb 2184 imp/s
+9:09:31 --- HATRA ---
+9:09:31 PWM 60 -> bal 704 imp/s, jobb 768 imp/s
+9:09:32 PWM 80 -> bal 1202 imp/s, jobb 1306 imp/s
+9:09:32 PWM 100 -> bal 1614 imp/s, jobb 1720 imp/s
+9:09:32 PWM 120 -> bal 2020 imp/s, jobb 2116 imp/s
+9:09:33 =========== K3 EREDMENY ===========
+9:09:33 --> KFF a tablazatba: { 0.04353, 0.04278 }
+9:09:33 --> HOLTSAV (illesztett): { 29, 27 }
+9:09:33 (hasonlitsd ossze a K0 holtsav-ertekeivel: 15 PWM-en belul legyenek!)
+9:09:33 meg PWM 240-nel: 2020 imp/s a leglassabb kerek
+9:09:33 --> VMAX_IMPS a tablazatba (65 %): 1313
+9:09:33 A show SOHA ne menjen ennel gyorsabban -- a maradek 35 % a PD-e,
 
-**VMAX_IMPS** (a leglassabb kerék 65 %-a): __________
+Second Stats:
+const int PWM_DB = 6;
+int pwmLista[PWM_DB] = { 60, 80, 100, 120, 150, 180};
+int BEALL_MS = 200;    // ennyi ideig gyorsul be a PWM-re
+int MERES_MS = 250;    // ezen az ablakon merjuk a sebesseget
 
-Ha az illesztett holtsáv 15 PWM-nél jobban eltér a K0 értékétől, valamelyik mérés hibás.
+9:21:40 K3 -- PWM/sebesseg jelleggorbe. Kell kb. 2 m szabad hely!
+9:21:40 Indulas 3 mp mulva, NE nyulj a robothoz.
+9:21:44 --- ELORE ---
+9:21:45 PWM 60 -> bal 630 imp/s, jobb 488 imp/s
+9:21:46 PWM 80 -> bal 1192 imp/s, jobb 1112 imp/s
+9:21:46 PWM 100 -> bal 1657 imp/s, jobb 1641 imp/s
+9:21:46 PWM 120 -> bal 2032 imp/s, jobb 2084 imp/s
+9:21:46 PWM 150 -> bal 2592 imp/s, jobb 2624 imp/s
+9:21:46 PWM 180 -> bal 3300 imp/s, jobb 3212 imp/s
+9:21:51 --- HATRA ---
+9:21:51 PWM 60 -> bal 720 imp/s, jobb 704 imp/s
+9:21:51 PWM 80 -> bal 1219 imp/s, jobb 1187 imp/s
+9:21:51 PWM 100 -> bal 1576 imp/s, jobb 1628 imp/s
+9:21:51 PWM 120 -> bal 1937 imp/s, jobb 2059 imp/s
+9:21:51 PWM 150 -> bal 2327 imp/s, jobb 2661 imp/s
+9:21:52 PWM 180 -> bal 2702 imp/s, jobb 3198 imp/s
+9:21:52 =========== K3 EREDMENY ===========
+9:21:52 --> KFF a tablazatba: { 0.05351, 0.04630 }
+9:21:52 --> HOLTSAV (illesztett): { 18, 28 }
+9:21:52 (hasonlitsd ossze a K0 holtsav-ertekeivel: 15 PWM-en belul legyenek!)
+9:21:52 meg PWM 240-nel: 2702 imp/s a leglassabb kerek
+9:21:52 --> VMAX_IMPS a tablazatba (65 %): 1757
+9:21:52 A show SOHA ne menjen ennel gyorsabban -- a maradek 35 % a PD-e,
+
+Third Stats:
+const int PWM_DB = 2;
+int pwmLista[PWM_DB] = { 60, 80};
+int BEALL_MS = 200;    // ennyi ideig gyorsul be a PWM-re
+int MERES_MS = 250;    // ezen az ablakon merjuk a sebesseget
+
+9:27:48 K3 -- PWM/sebesseg jelleggorbe. Kell kb. 2 m szabad hely!
+9:27:48 Indulas 3 mp mulva, NE nyulj a robothoz.
+9:27:51 --- ELORE ---
+9:27:52 PWM 60 -> bal 698 imp/s, jobb 749 imp/s
+9:27:52 PWM 80 -> bal 1244 imp/s, jobb 1260 imp/s
+9:27:55 --- HATRA ---
+9:27:55 PWM 60 -> bal 704 imp/s, jobb 696 imp/s
+9:27:56 PWM 80 -> bal 1184 imp/s, jobb 1192 imp/s
+9:27:56 =========== K3 EREDMENY ===========
+9:27:56 --> KFF a tablazatba: { 0.00000, 0.00000 }
+9:27:56 --> HOLTSAV (illesztett): { 0, 0 }
+9:27:56 (hasonlitsd ossze a K0 holtsav-ertekeivel: 15 PWM-en belul legyenek!)
+9:27:56 meg PWM 240-nel: 1184 imp/s a leglassabb kerek
+9:27:56 --> VMAX_IMPS a tablazatba (65 %): 770
+9:27:56 A show SOHA ne menjen ennel gyorsabban -- a maradek 35 % a PD-e,
+
+After a certain speed the left wheel on this robot cannot keep up with the right thus it has less power.
 
 **K4 — PD-hangolás és ellenőrzés**
 
