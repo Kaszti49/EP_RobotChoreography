@@ -67,8 +67,33 @@ void indulas() {
 
   uzenet("1) ELORE hajtva:  encBal=" + String(encBal) + "  encJobb=" + String(encJobb));
   uzenet("   Mindkettonek POZITIVNAK kell lennie, es a robotnak ELORE kell mennie.");
-  uzenet("   Ha nem: Muszerfal -> Robot beallitasa -> 'Enkoder-irany felismerese' (N,AUTO),");
-  uzenet("   utana futtasd ujra ezt a merest. A kodot NE ird at.");
+
+  // ---- EZ A LANC LEGFONTOSABB SORA ----
+  //  A K1/K2/K3 abszolut erteket hasznal, ezert VAK erre a hibara. Egyedul a
+  //  K4 (es a show) hasznalja az elojeles erteket -- ott viszont a hiba
+  //  vegzetes: az egyik kerek plafonra megy, a masik leall.
+  //  (2026-09-07: pontosan ez tortent, es a K0 ketszer is jelezte.)
+  //  Ezert a K0 mostantol nem tanacsot ad, hanem KESZ SORT ir ki.
+  int elBal  = (encBal  >= 0) ? 1 : -1;
+  int elJobb = (encJobb >= 0) ? 1 : -1;
+
+  if (encBal > -40 && encBal < 40)   elBal  = 0;   // meg sem mozdult
+  if (encJobb > -40 && encJobb < 40) elJobb = 0;
+
+  if (elBal == 0 || elJobb == 0) {
+    uzenet("   HIBA: valamelyik enkoder alig szamolt. Forog a kerek? Van akku?");
+    uzenet("   A holtsav-meres ettol meg lefut, de az elojel NEM ervenyes.");
+  } else if (elBal == 1 && elJobb == 1) {
+    uzenet("   OK, mindket elojel jo. A tablazatba:");
+    uzenet("   ENC_ELOJEL sora ehhez a robothoz:  { 1, 1 }");
+  } else {
+    uzenet("   !!! FORDITOTT ENKODER-ELOJEL !!!");
+    uzenet("   Ird be a K4 es a show_robot ENC_ELOJEL tablazataba EHHEZ a robothoz:");
+    uzenet("   ENC_ELOJEL sora:  { " + String(elBal) + ", " + String(elJobb) + " }");
+    uzenet("   VAGY futtasd az N,AUTO-t a Muszerfalon -- de NE MINDKETTOT!");
+    uzenet("   (Ha N,AUTO-t futtatsz, utana FUTTASD UJRA A K0-t, es azt a sort ird be,");
+    uzenet("    amit AKKOR ir ki. A ket javitas kioltja egymast.)");
+  }
 
   // vissza a kiindulasi hely kozelebe
   motor(-90, -90);
