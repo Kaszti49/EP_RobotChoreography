@@ -237,22 +237,342 @@ After a certain speed the left wheel on this robot cannot keep up with the right
 
 **K4 — PD-hangolás és ellenőrzés**
 
-| próba | PD_KP | PD_KD | PD_KSYNC | teszt | mért eltérés (mm) | megjegyzés |
-|---|---|---|---|---|---|---|
-| 1 | | | | | | |
-| 2 | | | | | | |
-| 3 | | | | | | |
-| 4 | | | | | | |
-| 5 | | | | | | |
+10:01:56 K4 -- robot 1, teszt 1 (3 lepes)
+10:01:56 KP=0.60 KD=0.020 KSYNC=0.30
+10:01:56 Allitsd a kiindulasi jelre, aztan HATRA! Indulas 5 mp mulva.
+10:01:56 5...
+10:01:57 4...
+10:01:58 3...
+10:01:59 2...
+10:02:00 1...
+10:02:01 >>> INDUL <<<
+10:02:02 t=1s lepes=0 v= 0 w= 0 hiba= 0/ 0
+10:02:03 t=2s lepes=1 v=200 w= 0 hiba=80/300
+10:02:04 t=3s lepes=1 v=200 w= 0 hiba=87/300
+10:02:05 t=4s lepes=1 v=200 w= 0 hiba=86/300
+10:02:06 t=5s lepes=1 v=200 w= 0 hiba=93/300
+10:02:07 t=6s lepes=1 v=200 w= 0 hiba=90/300
+10:02:08 t=7s lepes=1 v=200 w= 0 hiba=88/300
+10:02:09 t=8s lepes=1 v=200 w= 0 hiba=88/300
+10:02:10 t=9s lepes=1 v=200 w= 0 hiba=85/300
+10:02:11 t=10s lepes=1 v=200 w= 0 hiba=86/300
+10:02:12 t=11s lepes=1 v=200 w= 0 hiba=86/300
+10:02:13 t=12s lepes=2 v= 0 w= 0 hiba=97/300
+10:02:14 t=13s lepes=2 v= 0 w= 0 hiba=95/300
+10:02:14 =========== K4 EREDMENY ===========
+10:02:14 A robot ODA HITTE magat: x=16 mm y=-50 mm szog=3963 fok
+10:02:14 legnagyobb kovetesi hiba menet kozben: 300 impulzus
+10:02:14 -> nagy: emeld a PD_KP-t, vagy lassits (a motor telitesbe megy)
+10:02:14 MERD MEG: mennyivel all OLDALRA a 2 m-es egyenestol? Cel: < 30 mm
+10:02:14 tul nagy -> emeld a PD_KSYNC-et; ha mindig ugyanarra huz -> a K1 arany rossz
+10:02:14 Ird be a robot_adatok.md ellenorzes-tablazataba!
+10:02:14 ===================================
 
-**Elfogadási feltétel:** 1. teszt (2 m egyenes) < 30 mm oldalirányban;
-2. és 3. teszt (1 m négyzet mindkét irányban) < 50 mm a kiindulási ponttól.
+For some reason at these tests the left wheel doesnt or have very little power. The right overpowers it and for the Test 1 it just keeps spinning same goes for the 2nd test.
+Just in case here is the code:
+// =====================================================================
+//  K4 -- ZART-KORU ELLENORZES ES PD-HANGOLAS
+//  Show-koreografia: 5. (utolso) meres a hat robotbol mindegyiken
+// =====================================================================
+//
+//  MI EZ?
+//    Ez a show_robot.txt VEZERLESE, valtozatlanul -- csak koreografia
+//    helyett meropalyat jar. Ha ez a haromfele teszt atmegy, a robot
+//    keszen all a show-ra. Ha nem, ITT derul ki, es nem a kozonseg elott.
+//
+//  A HAROM TESZT (allitsd a TESZT valtozot 1 / 2 / 3-ra)
+//    1  EGYENES 2 m       -> a KSYNC keresztcsatolast ellenorzi
+//    2  1 m-es NEGYZET JOBBRA (oramutato szerint)
+//    3  1 m-es NEGYZET BALRA
+//       -> a 2. es 3. egyutt az "UMBmark" teszt: a ket irany hibaja
+//          megmondja, MELYIK mert szam rossz:
+//
+//       a ket irany hibaja UGYANARRA mutat  -> a MM_PER_IMP arany rossz (K1)
+//       a ket irany hibaja ELLENTETESEN     -> a NYOMTAV_MM rossz (K2)
+//
+//    Ez azert mukodik, mert a kerek-aranybol jovo hiba a haladasi iranyhoz
+//    kotott (mindig ugyanarra huz), a nyomtav-hiba viszont a fordulasokhoz
+//    -- es a ket iranyban a fordulasok ellentetesek.
+//
+//  CELERTEKEK
+//    1. teszt: 2 m utan az oldaliranyu elteres  < 30 mm
+//    2-3. teszt: a start-pontba visszaerve az elteres  < 50 mm
+//    Mindegyiket 3-5-szor futtasd -- egy szerencses kor nem meres.
+//
+//  ELOKESZULET
+//    - Ragaszd le a padlon: egy 2 m-es egyenest, es egy 1 x 1 m-es negyzetet.
+//    - A robot kiindulasi helyet es iranyat pontosan jelold (szalag-kereszt).
+//    - Ugyanaz a padlo es ugyanaz az akku-allapot, mint a show-n!
+//    - Toltsd ki lent a robot MERT adatait a robot_adatok.md-bol!
+//
+//  HANGOLASI SORREND (P -> D -> KSYNC), ugyanaz az elv, mint a vonalkovetesnel
+//    1. PD_KD = 0, PD_KSYNC = 0. Emeld a PD_KP-t 0,2-rol, amig a robot mar
+//       nem "lomhan" indul, de meg nem rangat / zug allasban.
+//    2. Emeld a PD_KD-t (0,01 -> 0,05), amig a megallasok tullendulese eltunik.
+//       Ha allasban remeg vagy zug: TUL SOK a D, vedd vissza.
+//    3. Emeld a PD_KSYNC-et (0,1 -> 0,5), amig az 1. teszt egyenese kiegyenesedik.
+//       Tul nagy KSYNC: a robot "ciganykerekezik", kapkodva korrigal.
+// =====================================================================
 
-Ha a négyzet-teszt két iránya **ugyanarra** húz → a K1 arány rossz, mérd újra.
-Ha **ellentétesen** húz → a K2 nyomtáv rossz, mérd újra.
 
----
+// ============ 1. MELYIK ROBOT? ============
+#define ROBOT 1              // <<<<<< 1..6
 
+const int R = ROBOT - 1;
+
+const int maximumPWM = 120;
+
+// ============ 2. MERT ADATOK (ugyanaz, mint a show_robot.txt-ben!) ============
+const float MM_PER_IMP[6][2] = {
+  {0.67889, 0.68353}, {0.67889, 0.68353}, {0.67590, 0.68027},
+  {0.67590, 0.68027}, {0.67499, 0.67958}, {0.67499, 0.67958}
+};
+const float NYOMTAV_MM[6] = { 153.0, 153.0, 153.0, 153.0, 153.0, 153.0 };
+const int   HOLTSAV[6][2] = { {25,25}, {30,25}, {25,27}, {25,25}, {30,25}, {25,27} };
+const float KFF[6][2] = {
+  {0.04353, 0.04278}, {0.04353, 0.04278}, {0.05351, 0.04630},
+  {0.05351, 0.04630}, {0.20000, 0.2000}, {0.20000, 0.20000}
+};
+const int   VMAX_IMPS[6] = { 600, 600, 600, 600, 600, 600 };
+const float PD_KP[6]    = { 0.60, 0.60, 0.60, 0.60, 0.60, 0.60 };
+const float PD_KD[6]    = { 0.02, 0.02, 0.02, 0.02, 0.02, 0.02 };
+const float PD_KSYNC[6] = { 0.30, 0.30, 0.30, 0.30, 0.30, 0.30 };
+const int ENC_ELOJEL[6][2] = { {1,1}, {1,1}, {1,1}, {1,1}, {1,1}, {1,1} };
+const int MOT_ELOJEL[6][2] = { {1,1}, {1,1}, {1,1}, {1,1}, {1,1}, {1,1} };
+
+
+// ============ 3. MELYIK TESZT FUSSON? ============
+int TESZT = 2;      // <<<<<< 1 = egyenes 2 m,  2 = negyzet JOBBRA,  3 = negyzet BALRA
+
+
+// ============ 4. BEALLITASOK (ugyanaz, mint a show-ban) ============
+float GYORSULAS_MM_S2 = 600.0;
+float SZOGGYORSULAS   = 360.0;
+float D_ALFA          = 0.30;
+float HIBA_HATAR      = 300.0;
+float U_MIN           = 3.0;
+float ALLAS_TURES     = 12.0;
+int   TELEMETRIA_CIKLUS = 50;
+
+struct Lepes { uint16_t ido_ms; float v_mm_s; float omega_fok_s; };
+
+
+// ============ 5. A MEROPALYAK ============
+//  1) EGYENES: 2000 mm 200 mm/s-mal = 10 000 ms
+const Lepes TESZT1[] = {
+  {1500, 0, 0}, {10000, 200, 0}, {2000, 0, 0}
+};
+//  2) NEGYZET JOBBRA: 4 x (1000 mm elore, 90 fok jobbra)
+//     1000 mm / 200 mm/s = 5000 ms ;  90 fok / 45 fok/s = 2000 ms
+const Lepes TESZT2[] = {
+  {1500, 0, 0},
+  {5000, 200, 0}, {2000, 0, 45}, {5000, 200, 0}, {2000, 0, 45},
+  {5000, 200, 0}, {2000, 0, 45}, {5000, 200, 0}, {2000, 0, 45},
+  {2000, 0, 0}
+};
+//  3) NEGYZET BALRA: ugyanaz, ellentetes fordulasokkal
+const Lepes TESZT3[] = {
+  {1500, 0, 0},
+  {5000, 200, 0}, {2000, 0, -45}, {5000, 200, 0}, {2000, 0, -45},
+  {5000, 200, 0}, {2000, 0, -45}, {5000, 200, 0}, {2000, 0, -45},
+  {2000, 0, 0}
+};
+
+const Lepes* palya;
+int palyaDb;
+
+
+// ============ 6. BELSO ALLAPOT (azonos a show-eval) ============
+int   shAllapot = 0;                       // 0 = visszaszamlal, 1 = megy, 2 = vege
+unsigned long armMs = 0, showMs = 0, utolsoTick = 0;
+float vAkt = 0, omegaAkt = 0;
+float celBal = 0, celJobb = 0;
+float elozoHibaBal = 0, elozoHibaJobb = 0;
+float dSzurtBal = 0, dSzurtJobb = 0;
+long  elozoEncBal = 0, elozoEncJobb = 0;
+float odoX = 0, odoY = 0, odoSzog = 0;
+float maxHiba = 0;
+int   shCiklus = 0;
+int   utolsoVisszaszam = -1;
+
+long encB() { return encBal  * ENC_ELOJEL[R][0]; }
+long encJ() { return encJobb * ENC_ELOJEL[R][1]; }
+
+int pwmSzamol(float u, int oldal) {
+  if (u > -U_MIN && u < U_MIN) return 0;
+  int   elojel  = (u > 0) ? 1 : -1;
+  float nagysag = (u > 0) ? u : -u;
+  int   p = HOLTSAV[R][oldal] + (int)(nagysag + 0.5);
+  if (p > maximumPWM) p = maximumPWM;
+  return elojel * p * MOT_ELOJEL[R][oldal];
+}
+
+
+// ============ 7. A KERET HIVJA: EGYSZER ============
+void indulas() {
+  motor(0, 0);
+  enkoderNullaz();
+
+  if (TESZT == 2)      { palya = TESZT2; palyaDb = sizeof(TESZT2) / sizeof(Lepes); }
+  else if (TESZT == 3) { palya = TESZT3; palyaDb = sizeof(TESZT3) / sizeof(Lepes); }
+  else                 { palya = TESZT1; palyaDb = sizeof(TESZT1) / sizeof(Lepes); }
+
+  shAllapot = 0;
+  armMs = millis();
+  utolsoTick = armMs;
+  utolsoVisszaszam = -1;
+  maxHiba = 0;
+  shCiklus = 0;
+
+  uzenet("K4 -- robot " + String(ROBOT) + ", teszt " + String(TESZT)
+         + " (" + String(palyaDb) + " lepes)");
+  uzenet("KP=" + String(PD_KP[R], 2) + " KD=" + String(PD_KD[R], 3)
+         + " KSYNC=" + String(PD_KSYNC[R], 2));
+  uzenet("Allitsd a kiindulasi jelre, aztan HATRA! Indulas 5 mp mulva.");
+}
+
+
+// ============ 8. A KERET HIVJA: 20 MS-ONKENT ============
+void vezerles() {
+  unsigned long most = millis();
+  float dt = (float)(most - utolsoTick) / 1000.0;
+  utolsoTick = most;
+  if (dt <= 0.0 || dt > 0.2) dt = 0.02;
+
+  // --- visszaszamlalas ---
+  if (shAllapot == 0) {
+    motor(0, 0);
+    unsigned long eltelt = most - armMs;
+    if (eltelt >= 5000) {
+      enkoderNullaz();
+      elozoEncBal = 0; elozoEncJobb = 0;
+      celBal = 0; celJobb = 0;
+      elozoHibaBal = 0; elozoHibaJobb = 0;
+      dSzurtBal = 0; dSzurtJobb = 0;
+      vAkt = 0; omegaAkt = 0;
+      odoX = 0; odoY = 0; odoSzog = 0;
+      showMs = most;
+      shAllapot = 1;
+      uzenet(">>> INDUL <<<");
+      return;
+    }
+    int hatra = (int)((5000 - eltelt) / 1000) + 1;
+    if (hatra != utolsoVisszaszam) { utolsoVisszaszam = hatra; uzenet(String(hatra) + "..."); }
+    return;
+  }
+  if (shAllapot == 2) { motor(0, 0); return; }
+
+  // --- hol tartunk ---
+  unsigned long t = most - showMs;
+  unsigned long vege = 0;
+  int idx = 0;
+  while (idx < palyaDb) { vege += palya[idx].ido_ms; if (t < vege) break; idx++; }
+
+  float vCel = 0, omegaCel = 0;
+  bool vegeVan = (idx >= palyaDb);
+  if (!vegeVan) { vCel = palya[idx].v_mm_s; omegaCel = palya[idx].omega_fok_s; }
+
+  // --- gyorsulas-korlat ---
+  float dvMax = GYORSULAS_MM_S2 * dt;
+  float dv = vCel - vAkt;
+  if (dv >  dvMax) dv =  dvMax;
+  if (dv < -dvMax) dv = -dvMax;
+  vAkt += dv;
+  float dwMax = SZOGGYORSULAS * dt;
+  float dw = omegaCel - omegaAkt;
+  if (dw >  dwMax) dw =  dwMax;
+  if (dw < -dwMax) dw = -dwMax;
+  omegaAkt += dw;
+
+  // --- kinematika ---
+  float omegaRad = omegaAkt * 0.01745329;
+  float fel = NYOMTAV_MM[R] / 2.0;
+  float vBalImpS  = (vAkt + omegaRad * fel) / MM_PER_IMP[R][0];
+  float vJobbImpS = (vAkt - omegaRad * fel) / MM_PER_IMP[R][1];
+
+  float nagyobb = (vBalImpS > 0 ? vBalImpS : -vBalImpS);
+  float masik   = (vJobbImpS > 0 ? vJobbImpS : -vJobbImpS);
+  if (masik > nagyobb) nagyobb = masik;
+  if (nagyobb > (float)VMAX_IMPS[R]) {
+    float sk = (float)VMAX_IMPS[R] / nagyobb;
+    vBalImpS *= sk; vJobbImpS *= sk;
+  }
+
+  // --- cel-pozicio es hiba ---
+  celBal  += vBalImpS  * dt;
+  celJobb += vJobbImpS * dt;
+  float hibaBal  = celBal  - (float)encB();
+  float hibaJobb = celJobb - (float)encJ();
+  if (hibaBal  >  HIBA_HATAR) { hibaBal  =  HIBA_HATAR; celBal  = (float)encB() + HIBA_HATAR; }
+  if (hibaBal  < -HIBA_HATAR) { hibaBal  = -HIBA_HATAR; celBal  = (float)encB() - HIBA_HATAR; }
+  if (hibaJobb >  HIBA_HATAR) { hibaJobb =  HIBA_HATAR; celJobb = (float)encJ() + HIBA_HATAR; }
+  if (hibaJobb < -HIBA_HATAR) { hibaJobb = -HIBA_HATAR; celJobb = (float)encJ() - HIBA_HATAR; }
+
+  float ah = (hibaBal > 0 ? hibaBal : -hibaBal);
+  if (ah > maxHiba) maxHiba = ah;
+  ah = (hibaJobb > 0 ? hibaJobb : -hibaJobb);
+  if (ah > maxHiba) maxHiba = ah;
+
+  // --- PD + keresztcsatolas ---
+  float dB = (hibaBal  - elozoHibaBal)  / dt;
+  float dJ = (hibaJobb - elozoHibaJobb) / dt;
+  dSzurtBal  += (dB - dSzurtBal)  * D_ALFA;
+  dSzurtJobb += (dJ - dSzurtJobb) * D_ALFA;
+  elozoHibaBal  = hibaBal;
+  elozoHibaJobb = hibaJobb;
+
+  float szinkron = hibaBal - hibaJobb;
+  float uBal  = KFF[R][0] * vBalImpS  + PD_KP[R] * hibaBal  + PD_KD[R] * dSzurtBal  + PD_KSYNC[R] * szinkron;
+  float uJobb = KFF[R][1] * vJobbImpS + PD_KP[R] * hibaJobb + PD_KD[R] * dSzurtJobb - PD_KSYNC[R] * szinkron;
+
+  bool allunk = (vCel == 0 && omegaCel == 0 && vAkt == 0 && omegaAkt == 0);
+  if (allunk) {
+    if (hibaBal  < ALLAS_TURES && hibaBal  > -ALLAS_TURES) uBal  = 0;
+    if (hibaJobb < ALLAS_TURES && hibaJobb > -ALLAS_TURES) uJobb = 0;
+  }
+
+  motor(pwmSzamol(uBal, 0), pwmSzamol(uJobb, 1));
+
+  // --- odometria ---
+  long dbi = encB() - elozoEncBal;
+  long dji = encJ() - elozoEncJobb;
+  elozoEncBal = encB(); elozoEncJobb = encJ();
+  float dBalMm  = (float)dbi * MM_PER_IMP[R][0];
+  float dJobbMm = (float)dji * MM_PER_IMP[R][1];
+  float dUt = (dBalMm + dJobbMm) / 2.0;
+  odoSzog += (dBalMm - dJobbMm) / NYOMTAV_MM[R];
+  odoX += dUt * sin(odoSzog);
+  odoY += dUt * cos(odoSzog);
+
+  // --- vege es kiertekeles ---
+  if (vegeVan && vAkt == 0 && omegaAkt == 0) {
+    motor(0, 0);
+    shAllapot = 2;
+    uzenet("=========== K4 EREDMENY ===========");
+    uzenet("A robot ODA HITTE magat: x=" + String(odoX, 0) + " mm  y=" + String(odoY, 0)
+           + " mm  szog=" + String(odoSzog * 57.2958, 0) + " fok");
+    uzenet("legnagyobb kovetesi hiba menet kozben: " + String(maxHiba, 0) + " impulzus");
+    if (maxHiba > 250)
+      uzenet("  -> nagy: emeld a PD_KP-t, vagy lassits (a motor telitesbe megy)");
+    if (TESZT == 1) {
+      uzenet("MERD MEG: mennyivel all OLDALRA a 2 m-es egyenestol?  Cel: < 30 mm");
+      uzenet("  tul nagy -> emeld a PD_KSYNC-et; ha mindig ugyanarra huz -> a K1 arany rossz");
+    } else {
+      uzenet("MERD MEG: milyen messze all a kiindulasi jeltol?  Cel: < 50 mm");
+      uzenet("  Futtasd le a 2. ES a 3. tesztet is, es hasonlitsd ossze:");
+      uzenet("  ugyanarra huznak    -> MM_PER_IMP arany rossz (K1 ujra)");
+      uzenet("  ellentetesen huznak -> NYOMTAV_MM rossz (K2 ujra)");
+    }
+    uzenet("Ird be a robot_adatok.md ellenorzes-tablazataba!");
+    uzenet("===================================");
+    return;
+  }
+
+  shCiklus++;
+  if (shCiklus % TELEMETRIA_CIKLUS == 0)
+    uzenet("t=" + String(t / 1000) + "s lepes=" + String(idx) + " v=" + String(vAkt, 0)
+           + " w=" + String(omegaAkt, 0) + " hiba=" + String(hibaBal, 0) + "/" + String(hibaJobb, 0));
+}
 ## A kész tábla — ezt másold a `show_robot.txt` 2. blokkjába
 
 Cseréld ki a nevleges értékeket a mértekre. A sorrend: robot 1 → 6.
