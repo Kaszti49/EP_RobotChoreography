@@ -38,9 +38,21 @@
 // =====================================================================
 
 // --------------------- beallitasok ---------------------
-float UT_MM       = 2000.0;   // ENNYIT tolsz vegig, millimeterben. Merd ki pontosan!
+//  !!! A LEGGYAKORIBB HIBA A TELJES LANCBAN !!!
+//  Az UT_MM-nek PONTOSAN annyinak kell lennie, amennyit TENYLEG tolsz.
+//  2026-09-07: itt 2000 maradt, a robotot viszont 1000 mm-t toltuk -> minden
+//  MM_PER_IMP pontosan 2x akkora lett, a K2 emiatt 5 helyett 2,5 kort
+//  fordult, es a hiba vegigment az egesz lancon. A program most maga szol,
+//  ha ez megtortent (lasd a 408 imp/fordulat ellenorzest lent).
+float UT_MM       = 2000.0;   // <<<<<< ENNYIT tolsz vegig, mm-ben. MERD KI!
 long  MIN_IMP     = 500;      // ennyi impulzus alatt nem tekintjuk ervenyes menetnek
 int   ALLAS_MS    = 2000;     // ennyi mozdulatlansag utan irja ki az eredmenyt
+
+//  A keret fix adata: 408 impulzus = 1 kerekfordulat = 138,9 mm.
+//  Ehhez merjuk a kapott erteket -- ha 20 %-nal jobban elter, az nem
+//  gumikopas, hanem elgepelt UT_MM.
+const float IMP_PER_FORDULAT = 408.0;
+const float MM_PER_FORDULAT  = 138.9;
 
 // --------------------- allapot ---------------------
 long  utolsoBal   = 0;
@@ -80,6 +92,22 @@ void vezerles() {
   if (!kiirtuk && millis() - utolsoValtozas > (unsigned long)ALLAS_MS) {
     kiirtuk = true;
 
+    // ---- ELOJEL-ELLENORZES (passziv: nem hajtunk, csak nezzuk) ----
+    //  Egyenes tolasnal a KET enkodernek UGYANARRA kell szamolnia.
+    //  Ha ellentetes elojeluek, forditva van bekotve az egyik -- ezt a
+    //  K1 eddig csendben elnyelte (abszolut ertek), es csak a K4-ben
+    //  robbant. Most megall itt.
+    if ((encBal > 0 && encJobb < 0) || (encBal < 0 && encJobb > 0)) {
+      uzenet("=========== K1 LEALLT: ELOJEL-HIBA ===========");
+      uzenet("encBal=" + String(encBal) + "  encJobb=" + String(encJobb)
+             + " -- ELLENTETES elojel egyenes tolasnal!");
+      uzenet("Az egyik enkoder forditva szamol. Futtasd a K0-t, es a kiirt");
+      uzenet("ENC_ELOJEL sort ird be a K4 / show_robot tablazataba.");
+      uzenet("A meres addig ERVENYTELEN. (Ez a hiba a K4-ben elszalado robotot okoz.)");
+      uzenet("==============================================");
+      return;
+    }
+
     long b = encBal  < 0 ? -encBal  : encBal;
     long j = encJobb < 0 ? -encJobb : encJobb;
 
@@ -99,8 +127,31 @@ void vezerles() {
     uzenet("arany bal/jobb = " + String(arany, 4) + "   (1,000 = tokeletesen egyforma kerekek)");
 
     // kerekenkenti impulzus/fordulat -- ezt a Muszerfal N parancsaba is beirhatod
-    uzenet("impulzus/fordulat  bal=" + String(138.9 / mmBal, 0) + "  jobb=" + String(138.9 / mmJobb, 0)
+    float ipfBal  = MM_PER_FORDULAT / mmBal;
+    float ipfJobb = MM_PER_FORDULAT / mmJobb;
+    uzenet("impulzus/fordulat  bal=" + String(ipfBal, 0) + "  jobb=" + String(ipfJobb, 0)
            + "   (nevleges: 408)");
+
+    // ---- SKALA-ELLENORZES: jo-e az UT_MM? ----
+    //  Az enkoder 408 imp/fordulat -- ez a HARDVER adata, nem valtozik.
+    //  Ha a mert imp/fordulat ettol 20 %-nal jobban elter, akkor nem a kerek
+    //  mas, hanem az UT_MM nem egyezik a tenylegesen tolt uttal.
+    float ipfAtlag = (ipfBal + ipfJobb) / 2.0;
+    float valodiUt = (float)(b + j) / 2.0 / IMP_PER_FORDULAT * MM_PER_FORDULAT;
+
+    if (ipfAtlag < IMP_PER_FORDULAT * 0.8 || ipfAtlag > IMP_PER_FORDULAT * 1.2) {
+      uzenet("!!! SKALA-HIBA: a mert impulzus/fordulat " + String(ipfAtlag, 0)
+             + ", a nevleges 408.");
+      uzenet("!!! Az enkoder 408 imp/fordulatja HARDVER-adat: ez nem gumikopas.");
+      uzenet("!!! Az impulzusszambol a TENYLEG megtett ut: " + String(valodiUt, 0) + " mm,");
+      uzenet("!!! de az UT_MM-be " + String(UT_MM, 0) + " mm van irva.");
+      uzenet("!!! Ird at az UT_MM-et " + String(valodiUt, 0)
+             + "-re (vagy told ki a robotot tenyleg " + String(UT_MM, 0) + " mm-t), es merj ujra.");
+      uzenet("!!! A fenti MM_PER_IMP ERVENYTELEN, ne ird be a tablazatba!");
+    } else {
+      uzenet("skala OK (imp/fordulat " + String(ipfAtlag, 0) + ", tolt ut ~"
+             + String(valodiUt, 0) + " mm)");
+    }
 
     if (arany > 1.03 || arany < 0.97)
       uzenet("FIGYELEM: 3 %-nal nagyobb elteres a ket kerek kozott -- nezd meg, nem csuszott-e meg tolas kozben.");
