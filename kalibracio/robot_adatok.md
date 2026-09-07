@@ -238,5 +238,45 @@ eltér, előbb a mérést nézd meg, ne a robotot.
 koreográfia végig abban a tartományban marad, ahol a két kerék 1 %-on belül
 egyforma — bőven a szabályzó mozgásterén belül.
 
+
+K0 mérés:
+10:56:18 K0 -- elojel es holtsav. NE nyulj a robothoz!
+10:56:20 1) ELORE hajtva: encBal=794 encJobb=-790
+10:56:20 Mindkettonek POZITIVNAK kell lennie, es a robotnak ELORE kell mennie.
+10:56:21 !!! FORDITOTT ENKODER-ELOJEL !!!
+10:56:21 Ird be a K4 es a show_robot ENC_ELOJEL tablazataba EHHEZ a robothoz:
+10:56:21 ENC_ELOJEL sora: { 1, -1 }
+10:56:21 VAGY futtasd az N,AUTO-t a Muszerfalon -- de NE MINDKETTOT!
+10:56:21 (Ha N,AUTO-t futtatsz, utana FUTTASD UJRA A K0-t, es azt a sort ird be,
+10:56:21 uzenet-sor tele, eldobva: 1
+10:56:22 2) Holtsav-meres indul (4 x kb. 8 mp)...
+10:56:25 =========== K0 EREDMENY ===========
+10:56:25 HOLTSAV bal elore/hatra: 25 / 25
+10:56:25 HOLTSAV jobb elore/hatra: 25 / 25
+10:56:25 --> HOLTSAV a tablazatba: { 25, 25 }
+10:56:25 ===================================
+10:56:25 Ird be a robot_adatok.md tablazatba, majd jon a K1.
+10:56:33 a kódod leállt (stop)
+10:57:19 a kódod elindult
+10:57:19 K0 -- elojel es holtsav. NE nyulj a robothoz!
+10:57:22 1) ELORE hajtva: encBal=796 encJobb=-798
+10:57:22 Mindkettonek POZITIVNAK kell lennie, es a robotnak ELORE kell mennie.
+10:57:22 !!! FORDITOTT ENKODER-ELOJEL !!!
+10:57:22 Ird be a K4 es a show_robot ENC_ELOJEL tablazataba EHHEZ a robothoz:
+10:57:22 ENC_ELOJEL sora: { 1, -1 }
+10:57:22 VAGY futtasd az N,AUTO-t a Muszerfalon -- de NE MINDKETTOT!
+10:57:22 (Ha N,AUTO-t futtatsz, utana FUTTASD UJRA A K0-t, es azt a sort ird be,
+10:57:22 uzenet-sor tele, eldobva: 1
+10:57:23 2) Holtsav-meres indul (4 x kb. 8 mp)...
+10:57:26 =========== K0 EREDMENY ===========
+10:57:26 HOLTSAV bal elore/hatra: 25 / 25
+10:57:26 HOLTSAV jobb elore/hatra: 25 / 25
+10:57:26 --> HOLTSAV a tablazatba: { 25, 25 }
+10:57:26 ===================================
+10:57:26 Ird be a robot_adatok.md tablazatba, majd jon a K1.
+
+K1 Mérés:
+
+
 A 0,67 %-os arány-eltérés az, amitől kiegyenlítés nélkül a robot 2 m alatt
 kb. 7 cm-t kanyarodna el magától — pontosan ezt tünteti el a keresztcsatolás.
