@@ -42,7 +42,7 @@ A show-ban ezek nem tűnnek el maguktól: 3 % úthiba egy 10 méteres koreográf
 
 ## Adatlap — másold le 6 példányban
 
-### ROBOT sorszáma: ____   Dátum: __________   Padló: __________   Akku (mV): ______
+### ROBOT sorszáma: 1   Dátum: 2026/09/07   Padló: 1000mm fa parketta   Akku (mV): 8.62V
 
 **K0 — előjel és holtsáv**
 
@@ -75,16 +75,29 @@ A show-ban ezek nem tűnnek el maguktól: 3 % úthiba egy 10 méteres koreográf
 Ha valamelyik enkóder rossz irányba számolt: Műszerfal → *Robot beállítása* →
 *Enkóder-irány felismerése* (`N,AUTO`), majd K0 újra. A kódot ne írd át.
 
-**K1 — út / impulzus** (tolt út: __________ mm)
+**K1 — út / impulzus** (tolt út: 1000 mm)
 
-| mérés | encBal | encJobb | mm/imp bal | mm/imp jobb |
-|---|---|---|---|---|
-| 1. | | | | |
-| 2. | | | | |
-| 3. | | | | |
-| **átlag** | | | | |
-
-arány (bal/jobb): __________  ← ez a robot „ferdesége”, 1,000-től való eltérése a lényeg
+8:03:35 =========== K1 EREDMENY ===========
+8:03:35 impulzus bal=2946 jobb=2926 (ut: 1000 mm)
+8:03:35 --> MM_PER_IMP a tablazatba: { 0.67889, 0.68353 }
+8:03:35 arany bal/jobb = 0.9932 (1,000 = tokeletesen egyforma kerekek)
+8:03:35 impulzus/fordulat bal=205 jobb=203 (nevleges: 408)
+8:03:35 Ismeteld 3-szor, es a HAROM ATLAGAT ird be a robot_adatok.md-be.
+8:03:35 ===================================
+8:05:27 =========== K1 EREDMENY ===========
+8:05:27 impulzus bal=2959 jobb=2940 (ut: 1000 mm)
+8:05:27 --> MM_PER_IMP a tablazatba: { 0.67590, 0.68027 }
+8:05:27 arany bal/jobb = 0.9936 (1,000 = tokeletesen egyforma kerekek)
+8:05:27 impulzus/fordulat bal=206 jobb=204 (nevleges: 408)
+8:05:27 Ismeteld 3-szor, es a HAROM ATLAGAT ird be a robot_adatok.md-be.
+8:05:27 ===================================
+8:07:09 =========== K1 EREDMENY ===========
+8:07:09 impulzus bal=2963 jobb=2943 (ut: 1000 mm)
+8:07:09 --> MM_PER_IMP a tablazatba: { 0.67499, 0.67958 }
+8:07:09 arany bal/jobb = 0.9933 (1,000 = tokeletesen egyforma kerekek)
+8:07:09 impulzus/fordulat bal=206 jobb=204 (nevleges: 408)
+8:07:09 Ismeteld 3-szor, es a HAROM ATLAGAT ird be a robot_adatok.md-be.
+8:07:09 ===================================
 
 **K2 — nyomtáv** (5 teljes fordulat, becslés: 153,0 mm)
 
