@@ -46,12 +46,31 @@ A show-ban ezek nem tűnnek el maguktól: 3 % úthiba egy 10 méteres koreográf
 
 **K0 — előjel és holtsáv**
 
-| | bal | jobb |
-|---|---|---|
-| előre hajtva az enkóder nő? (I/N) | | |
-| holtsáv előre (PWM) | | |
-| holtsáv hátra (PWM) | | |
-| **HOLTSAV (a kettő átlaga)** | | |
+7:49:24 K0 -- elojel es holtsav. NE nyulj a robothoz!
+7:49:27 1) ELORE hajtva: encBal=817 encJobb=-818
+7:49:27 Mindkettonek POZITIVNAK kell lennie, es a robotnak ELORE kell mennie.
+7:49:27 Ha nem: Muszerfal -> Robot beallitasa -> 'Enkoder-irany felismerese' (N,AUTO),
+7:49:27 utana futtasd ujra ezt a merest. A kodot NE ird at.
+7:49:28 2) Holtsav-meres indul (4 x kb. 8 mp)...
+7:49:32 =========== K0 EREDMENY ===========
+7:49:32 HOLTSAV bal elore/hatra: 25 / 25
+7:49:32 HOLTSAV jobb elore/hatra: 30 / 25
+7:49:32 --> HOLTSAV a tablazatba: { 25, 27 }
+7:49:32 ===================================
+7:49:32 Ird be a robot_adatok.md tablazatba, majd jon a K1.
+7:51:24 a kódod leállt (stop)
+7:51:29 a kódod elindult
+7:51:29 K0 -- elojel es holtsav. NE nyulj a robothoz!
+7:51:31 1) ELORE hajtva: encBal=816 encJobb=-823
+7:51:31 Mindkettonek POZITIVNAK kell lennie, es a robotnak ELORE kell mennie.
+7:51:31 Ha nem: Muszerfal -> Robot beallitasa -> 'Enkoder-irany felismerese' (N,AUTO),
+7:51:32 utana futtasd ujra ezt a merest. A kodot NE ird at.
+7:51:33 2) Holtsav-meres indul (4 x kb. 8 mp)...
+7:51:36 =========== K0 EREDMENY ===========
+7:51:36 HOLTSAV bal elore/hatra: 30 / 25
+7:51:36 HOLTSAV jobb elore/hatra: 25 / 25
+7:51:36 --> HOLTSAV a tablazatba: { 27, 25 }
+7:51:36 ===================================
 
 Ha valamelyik enkóder rossz irányba számolt: Műszerfal → *Robot beállítása* →
 *Enkóder-irány felismerése* (`N,AUTO`), majd K0 újra. A kódot ne írd át.
