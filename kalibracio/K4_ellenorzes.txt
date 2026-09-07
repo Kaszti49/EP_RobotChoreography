@@ -49,22 +49,41 @@
 const int R = ROBOT - 1;
 
 // ============ 2. MERT ADATOK (ugyanaz, mint a show_robot.txt-ben!) ============
+//  Ez a blokk SZO SZERINT ugyanaz, mint a show_robot.txt 2. blokkja.
+//  Ha ott valtoztatsz, ITT IS valtoztasd -- kulonben a K4 nem azt ellenorzi,
+//  ami tenylegesen felmegy a robotra.
+const bool MERVE[6] = { true, false, false, false, false, false };
+
 const float MM_PER_IMP[6][2] = {
-  {0.34040, 0.34040}, {0.34040, 0.34040}, {0.34040, 0.34040},
+  {0.33829, 0.34056},   // robot 1  -- MERT (3 tolas atlaga 1000 mm-en), arany 0,99335
+  {0.34040, 0.34040}, {0.34040, 0.34040},
   {0.34040, 0.34040}, {0.34040, 0.34040}, {0.34040, 0.34040}
 };
+// FIGYELEM: a nyomtav egyik robotnal SINCS bemerve -- ez meg a tabori becsles.
 const float NYOMTAV_MM[6] = { 153.0, 153.0, 153.0, 153.0, 153.0, 153.0 };
-const int   HOLTSAV[6][2] = { {60,60}, {60,60}, {60,60}, {60,60}, {60,60}, {60,60} };
+const int   HOLTSAV[6][2] = {
+  {26, 26},             // robot 1  -- MERT (K0 ket futasanak atlaga)
+  {60,60}, {60,60}, {60,60}, {60,60}, {60,60}
+};
 const float KFF[6][2] = {
-  {0.20000, 0.20000}, {0.20000, 0.20000}, {0.20000, 0.20000},
+  {0.04353, 0.04278},   // robot 1  -- MERT (K3, PWM 60..120)
+  {0.20000, 0.20000}, {0.20000, 0.20000},
   {0.20000, 0.20000}, {0.20000, 0.20000}, {0.20000, 0.20000}
 };
-const int   VMAX_IMPS[6] = { 600, 600, 600, 600, 600, 600 };
+const int   VMAX_IMPS[6] = { 1313, 600, 600, 600, 600, 600 };
 const float PD_KP[6]    = { 0.60, 0.60, 0.60, 0.60, 0.60, 0.60 };
 const float PD_KD[6]    = { 0.02, 0.02, 0.02, 0.02, 0.02, 0.02 };
 const float PD_KSYNC[6] = { 0.30, 0.30, 0.30, 0.30, 0.30, 0.30 };
-const int ENC_ELOJEL[6][2] = { {1,1}, {1,1}, {1,1}, {1,1}, {1,1}, {1,1} };
+
+//  ROBOT 1: a jobb enkoder FORDITVA szamol (K0: elore hajtva -818 / -823).
+//  Ha lefuttatod az N,AUTO-t, ez az ertek ROSSZ lesz -- futtasd ujra a K0-t,
+//  es ird be az altala kiirt sort. NE hasznald mindkettot egyszerre.
+const int ENC_ELOJEL[6][2] = { {1,-1}, {1,1}, {1,1}, {1,1}, {1,1}, {1,1} };
 const int MOT_ELOJEL[6][2] = { {1,1}, {1,1}, {1,1}, {1,1}, {1,1}, {1,1} };
+
+// PWM-plafon. SAJAT nev SZANDEKOSAN -- a keret 2.0 NEM ad `maximumPWM`-et,
+// arra hivatkozva a vazlat nem fordul le. Ne ird at `maximumPWM`-re.
+const int PWM_PLAFON = 255;
 
 
 // ============ 3. MELYIK TESZT FUSSON? ============
@@ -120,6 +139,10 @@ float odoX = 0, odoY = 0, odoSzog = 0;
 float maxHiba = 0;
 int   shCiklus = 0;
 int   utolsoVisszaszam = -1;
+int   telitesSzamlalo = 0;
+
+// 150 ciklus = 3 masodperc tartos telites -> leallas
+const int TELITES_LEALLAS = 150;
 
 long encB() { return encBal  * ENC_ELOJEL[R][0]; }
 long encJ() { return encJobb * ENC_ELOJEL[R][1]; }
@@ -129,12 +152,52 @@ int pwmSzamol(float u, int oldal) {
   int   elojel  = (u > 0) ? 1 : -1;
   float nagysag = (u > 0) ? u : -u;
   int   p = HOLTSAV[R][oldal] + (int)(nagysag + 0.5);
-  if (p > maximumPWM) p = maximumPWM;
+  if (p > PWM_PLAFON) p = PWM_PLAFON;
   return elojel * p * MOT_ELOJEL[R][oldal];
 }
 
 
 // ============ 7. A KERET HIVJA: EGYSZER ============
+
+// INDULAS ELOTTI ELOJEL-ONTESZT.
+//  Ez a vazlat az ELSO a lancban, amelyik ELOJELES enkoder-erteket hasznal
+//  (a K1/K2/K3 abszolut erteket vesz, ezert vakok erre a hibara).
+//  Rossz elojellel a kovetesi hiba azonnal telitesbe fut, az egyik kerek
+//  plafonra megy, a masik leall -- pontosan ez tortent 2026-09-07-en.
+//  Ezert a K4 mostantol NEM INDUL EL, amig ezt le nem ellenorizte.
+bool elojelOnteszt() {
+  enkoderNullaz();
+  varj(200);
+  motor(90, 90);
+  varj(450);
+  motor(0, 0);
+  varj(500);
+
+  long b = encBal * ENC_ELOJEL[R][0];
+  long j = encJobb * ENC_ELOJEL[R][1];
+  uzenet("Elojel-onteszt: bal=" + String(b) + " jobb=" + String(j)
+         + "  (ENC_ELOJEL " + String(ENC_ELOJEL[R][0]) + "/" + String(ENC_ELOJEL[R][1]) + ")");
+
+  motor(-90, -90);
+  varj(450);
+  motor(0, 0);
+  varj(700);
+  enkoderNullaz();
+
+  if (b < 50 || j < 50) {
+    uzenet("!!!!!!!!!! K4 LEALLT: ROSSZ ENKODER-ELOJEL !!!!!!!!!!");
+    uzenet("Elore hajtva MINDKET erteknek pozitivnak kell lennie.");
+    uzenet("Ha most negativ, a szabalyzo elszalasztana a robotot:");
+    uzenet("  a hibas kerek hibaja telitesbe fut -> a masik kerek plafonra megy.");
+    uzenet("TEENDO: futtasd a K0-t, es az altala kiirt ENC_ELOJEL sort ird be");
+    uzenet("        a 2. blokk ENC_ELOJEL tablazataba EHHEZ a robothoz.");
+    uzenet("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+    return false;
+  }
+  uzenet("Elojel OK.");
+  return true;
+}
+
 void indulas() {
   motor(0, 0);
   enkoderNullaz();
@@ -143,17 +206,32 @@ void indulas() {
   else if (TESZT == 3) { palya = TESZT3; palyaDb = sizeof(TESZT3) / sizeof(Lepes); }
   else                 { palya = TESZT1; palyaDb = sizeof(TESZT1) / sizeof(Lepes); }
 
-  shAllapot = 0;
-  armMs = millis();
-  utolsoTick = armMs;
+  shAllapot = 2;          // amig az onteszt nem ment at, NEM indulunk
   utolsoVisszaszam = -1;
   maxHiba = 0;
   shCiklus = 0;
 
   uzenet("K4 -- robot " + String(ROBOT) + ", teszt " + String(TESZT)
          + " (" + String(palyaDb) + " lepes)");
+  uzenet("mm/imp " + String(MM_PER_IMP[R][0], 5) + "/" + String(MM_PER_IMP[R][1], 5)
+         + "  nyomtav " + String(NYOMTAV_MM[R], 1) + "  vmax " + String(VMAX_IMPS[R]));
   uzenet("KP=" + String(PD_KP[R], 2) + " KD=" + String(PD_KD[R], 3)
          + " KSYNC=" + String(PD_KSYNC[R], 2));
+
+  if (!MERVE[R]) {
+    uzenet("!!! A robot " + String(ROBOT) + " NINCS BEMERVE (MERVE[" + String(R) + "] = false).");
+    uzenet("!!! A K4 nevleges adatokkal ertelmetlen: futtasd eloszor a K0..K3-at.");
+    uzenet("!!! A meres NEM indul el.");
+    return;
+  }
+
+  uzenet("Elojel-onteszt kovetkezik -- a robot ROVIDEN elore-hatra mozdul.");
+  varj(1200);
+  if (!elojelOnteszt()) return;
+
+  shAllapot = 0;          // most mar mehet a visszaszamlalas
+  armMs = millis();
+  utolsoTick = armMs;
   uzenet("Allitsd a kiindulasi jelre, aztan HATRA! Indulas 5 mp mulva.");
 }
 
@@ -229,10 +307,26 @@ void vezerles() {
   celJobb += vJobbImpS * dt;
   float hibaBal  = celBal  - (float)encB();
   float hibaJobb = celJobb - (float)encJ();
-  if (hibaBal  >  HIBA_HATAR) { hibaBal  =  HIBA_HATAR; celBal  = (float)encB() + HIBA_HATAR; }
-  if (hibaBal  < -HIBA_HATAR) { hibaBal  = -HIBA_HATAR; celBal  = (float)encB() - HIBA_HATAR; }
-  if (hibaJobb >  HIBA_HATAR) { hibaJobb =  HIBA_HATAR; celJobb = (float)encJ() + HIBA_HATAR; }
-  if (hibaJobb < -HIBA_HATAR) { hibaJobb = -HIBA_HATAR; celJobb = (float)encJ() - HIBA_HATAR; }
+  bool telites = false;
+  if (hibaBal  >  HIBA_HATAR) { hibaBal  =  HIBA_HATAR; celBal  = (float)encB() + HIBA_HATAR; telites = true; }
+  if (hibaBal  < -HIBA_HATAR) { hibaBal  = -HIBA_HATAR; celBal  = (float)encB() - HIBA_HATAR; telites = true; }
+  if (hibaJobb >  HIBA_HATAR) { hibaJobb =  HIBA_HATAR; celJobb = (float)encJ() + HIBA_HATAR; telites = true; }
+  if (hibaJobb < -HIBA_HATAR) { hibaJobb = -HIBA_HATAR; celJobb = (float)encJ() - HIBA_HATAR; telites = true; }
+
+  // BIZTONSAGI LEALLAS -- ugyanaz, mint a show_robot.txt-ben.
+  //  Tartos telites = a szabalyzo olyan hibat hajszol, amit nem tud ledolgozni.
+  //  Ilyenkor az egyik kerek plafonon marad; inkabb alljunk meg.
+  telitesSzamlalo = telites ? telitesSzamlalo + 1 : 0;
+  if (telitesSzamlalo >= TELITES_LEALLAS) {
+    motor(0, 0);
+    shAllapot = 2;
+    uzenet("!!! BIZTONSAGI LEALLAS: " + String(TELITES_LEALLAS)
+           + " cikluson at telitesben a kovetesi hiba.");
+    uzenet("hibaBal=" + String(hibaBal, 0) + " hibaJobb=" + String(hibaJobb, 0));
+    uzenet("Ha az egyik hiba vegig +/-" + String(HIBA_HATAR, 0)
+           + " -> szinte biztosan ROSSZ ENC_ELOJEL. Futtass K0-t.");
+    return;
+  }
 
   float ah = (hibaBal > 0 ? hibaBal : -hibaBal);
   if (ah > maxHiba) maxHiba = ah;
