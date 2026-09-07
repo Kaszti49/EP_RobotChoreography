@@ -101,14 +101,58 @@ Ha valamelyik enkóder rossz irányba számolt: Műszerfal → *Robot beállít�
 
 **K2 — nyomtáv** (5 teljes fordulat, becslés: 153,0 mm)
 
-| irány | leolvasott delta (fok) | új nyomtáv = 153,0 × 1800 / (1800 + delta) |
-|---|---|---|
-| jobbra | | |
-| balra | | |
-| **NYOMTAV_MM (átlag)** | | |
+8:19:13 K2 -- nyomtav-meres. Becsles: 153.0 mm
+8:19:13 Egy teljes kor = 705 impulzus/kerek, osszesen 3525 (5 kor).
+8:19:13 NE nyulj a robothoz! Indulas 3 mp mulva...
+8:19:16 Forgas JOBBRA...
+8:19:21 === JOBBRA kesz. Olvasd le a szoget! ===
+8:19:21 Ha TULFORDULT (a nyil tullepett a jelen): a delta POZITIV.
+8:19:21 Ha nem ert oda: a delta NEGATIV.
+8:19:21 Keplet: uj_nyomtav = 153.0 * 1800 / (1800 + delta)
+8:19:29 Forgas BALRA...
+8:19:35 === BALRA kesz. Olvasd le ezt a szoget is! ===
+8:19:35 =========== K2 KIERTEKELES ===========
+8:19:35 1) Szamold ki mindket iranyra: uj = regi * 1800 / (1800 + delta)
+8:19:35 2) A KET EREDMENY ATLAGA a NYOMTAV_MM, ezt ird a tablazatba.
+8:19:35 3) Ird vissza ide a NYOMTAV_BECSLES-be, es futtasd ujra:
+8:19:35 ha a delta mar 5 fok alatt van, keszen vagy.
+8:19:35 ======================================
+8:19:42 a kódod leállt (stop)
+8:20:25 a kódod elindult
+8:20:25 K2 -- nyomtav-meres. Becsles: 153.0 mm
+8:20:25 Egy teljes kor = 705 impulzus/kerek, osszesen 3525 (5 kor).
+8:20:25 NE nyulj a robothoz! Indulas 3 mp mulva...
+8:20:28 Forgas JOBBRA...
+8:20:35 === JOBBRA kesz. Olvasd le a szoget! ===
+8:20:35 Ha TULFORDULT (a nyil tullepett a jelen): a delta POZITIV.
+8:20:35 Ha nem ert oda: a delta NEGATIV.
+8:20:35 Keplet: uj_nyomtav = 153.0 * 1800 / (1800 + delta)
+8:20:43 Forgas BALRA...
+8:20:49 === BALRA kesz. Olvasd le ezt a szoget is! ===
+8:20:49 =========== K2 KIERTEKELES ===========
+8:20:49 1) Szamold ki mindket iranyra: uj = regi * 1800 / (1800 + delta)
+8:20:49 2) A KET EREDMENY ATLAGA a NYOMTAV_MM, ezt ird a tablazatba.
+8:20:49 3) Ird vissza ide a NYOMTAV_BECSLES-be, es futtasd ujra:
+8:20:49 ha a delta mar 5 fok alatt van, keszen vagy.
+8:20:49 ======================================
+8:25:34 K2 -- nyomtav-meres. Becsles: 153.0 mm
+8:25:34 Egy teljes kor = 705 impulzus/kerek, osszesen 3525 (5 kor).
+8:25:34 NE nyulj a robothoz! Indulas 3 mp mulva...
+8:25:37 Forgas JOBBRA...
+8:25:42 === JOBBRA kesz. Olvasd le a szoget! ===
+8:25:42 Ha TULFORDULT (a nyil tullepett a jelen): a delta POZITIV.
+8:25:42 Ha nem ert oda: a delta NEGATIV.
+8:25:42 Keplet: uj_nyomtav = 153.0 * 1800 / (1800 + delta)
+8:25:50 Forgas BALRA...
+8:25:55 === BALRA kesz. Olvasd le ezt a szoget is! ===
+8:25:55 =========== K2 KIERTEKELES ===========
+8:25:55 1) Szamold ki mindket iranyra: uj = regi * 1800 / (1800 + delta)
+8:25:55 2) A KET EREDMENY ATLAGA a NYOMTAV_MM, ezt ird a tablazatba.
+8:25:55 3) Ird vissza ide a NYOMTAV_BECSLES-be, es futtasd ujra:
+8:25:55 ha a delta mar 5 fok alatt van, keszen vagy.
+8:25:55 ======================================
 
-Ismételd meg a mérést az új értékkel: ha a delta már 5 fok alatt van, kész.
-
+We put the robot on the surface without the tapes and then placed them on the tape line the first is without on the line and the 2nd and 3rd are on the line. The Robot only rotated roughly 2.5 times to the right and 2.5 to the left in one session.
 **K3 — feed-forward**
 
 | | bal | jobb |
