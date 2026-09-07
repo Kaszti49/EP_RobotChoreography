@@ -277,6 +277,98 @@ K0 mérés:
 
 K1 Mérés:
 
+1. Mérés:
+11:07:40 K1 -- told vegig a robotot 2000 mm-t a vezeto mellett, aztan engedd el.
+11:07:41 ... bal=0 jobb=0
+11:07:42 ... bal=188 jobb=-190
+11:07:43 ... bal=637 jobb=-630
+11:07:44 ... bal=1185 jobb=-1173
+11:07:45 ... bal=1809 jobb=-1802
+11:07:46 ... bal=2385 jobb=-2371
+11:07:47 ... bal=2835 jobb=-2837
+11:07:48 ... bal=3109 jobb=-3100
+11:07:49 ... bal=3670 jobb=-3670
+11:07:50 ... bal=4291 jobb=-4278
+11:07:51 ... bal=4920 jobb=-4891
+11:07:52 ... bal=5442 jobb=-5428
+11:07:53 ... bal=5895 jobb=-5893
+11:07:54 ... bal=5894 jobb=-5891
+11:07:55 ... bal=5894 jobb=-5891
+11:07:55 =========== K1 LEALLT: ELOJEL-HIBA ===========
+11:07:55 encBal=5894 encJobb=-5891 -- ELLENTETES elojel egyenes tolasnal!
+11:07:55 Az egyik enkoder forditva szamol. Futtasd a K0-t, es a kiirt
+11:07:55 ENC_ELOJEL sort ird be a K4 / show_robot tablazataba.
+11:07:55 A meres addig ERVENYTELEN. (Ez a hiba a K4-ben elszalado robotot okoz.)
+11:07:55 ==============================================
+
+2. Mérés:
+11:10:20 K1 -- told vegig a robotot 2000 mm-t a vezeto mellett, aztan engedd el.
+11:10:21 ... bal=0 jobb=0
+11:10:22 ... bal=62 jobb=-55
+11:10:23 ... bal=522 jobb=-524
+11:10:24 ... bal=970 jobb=-978
+11:10:25 ... bal=1500 jobb=-1497
+11:10:26 ... bal=1976 jobb=-1972
+11:10:27 ... bal=2376 jobb=-2349
+11:10:28 ... bal=2845 jobb=-2836
+11:10:29 ... bal=3270 jobb=-3263
+11:10:30 ... bal=3795 jobb=-3787
+11:10:31 ... bal=4341 jobb=-4322
+11:10:32 ... bal=4887 jobb=-4877
+11:10:33 ... bal=5447 jobb=-5433
+11:10:34 ... bal=5828 jobb=-5823
+11:10:35 ... bal=5869 jobb=-5856
+11:10:36 ... bal=5869 jobb=-5856
+11:10:37 =========== K1 LEALLT: ELOJEL-HIBA ===========
+11:10:37 encBal=5869 encJobb=-5856 -- ELLENTETES elojel egyenes tolasnal!
+11:10:37 Az egyik enkoder forditva szamol. Futtasd a K0-t, es a kiirt
+11:10:37 ENC_ELOJEL sort ird be a K4 / show_robot tablazataba.
+11:10:37 A meres addig ERVENYTELEN. (Ez a hiba a K4-ben elszalado robotot okoz.)
+11:10:37 ==============================================
+
+3. mérés:
+11:12:06 ... bal=367 jobb=-365
+11:12:07 ... bal=936 jobb=-940
+11:12:08 ... bal=1552 jobb=-1563
+11:12:09 ... bal=2153 jobb=-2155
+11:12:10 ... bal=2859 jobb=-2869
+11:12:11 ... bal=3665 jobb=-3671
+11:12:13 ... bal=4385 jobb=-4399
+11:12:14 ... bal=4996 jobb=-4997
+11:12:14 ... bal=5637 jobb=-5618
+11:12:15 ... bal=5864 jobb=-5840
+11:12:16 ... bal=5864 jobb=-5841
+11:12:17 ... bal=5864 jobb=-5841
+11:12:17 =========== K1 LEALLT: ELOJEL-HIBA ===========
+11:12:17 encBal=5864 encJobb=-5841 -- ELLENTETES elojel egyenes tolasnal!
+11:12:17 Az egyik enkoder forditva szamol. Futtasd a K0-t, es a kiirt
+11:12:17 ENC_ELOJEL sort ird be a K4 / show_robot tablazataba.
+11:12:17 A meres addig ERVENYTELEN. (Ez a hiba a K4-ben elszalado robotot okoz.)
+11:12:17 ==============================================
+
+4. mérés:
+11:13:03 ... bal=19 jobb=-19
+11:13:04 ... bal=451 jobb=-448
+11:13:05 ... bal=940 jobb=-942
+11:13:06 ... bal=1228 jobb=-1232
+11:13:07 ... bal=1579 jobb=-1590
+11:13:08 ... bal=2049 jobb=-2036
+11:13:09 ... bal=2610 jobb=-2599
+11:13:10 ... bal=2948 jobb=-2962
+11:13:11 ... bal=3425 jobb=-3427
+11:13:12 ... bal=3912 jobb=-3910
+11:13:13 ... bal=4495 jobb=-4475
+11:13:14 ... bal=4965 jobb=-4951
+11:13:15 ... bal=5389 jobb=-5385
+11:13:16 ... bal=5790 jobb=-5779
+11:13:17 ... bal=5894 jobb=-5888
+11:13:18 ... bal=5894 jobb=-5888
+11:13:18 =========== K1 LEALLT: ELOJEL-HIBA ===========
+11:13:18 encBal=5894 encJobb=-5888 -- ELLENTETES elojel egyenes tolasnal!
+11:13:18 Az egyik enkoder forditva szamol. Futtasd a K0-t, es a kiirt
+11:13:18 ENC_ELOJEL sort ird be a K4 / show_robot tablazataba.
+11:13:18 A meres addig ERVENYTELEN. (Ez a hiba a K4-ben elszalado robotot okoz.)
+11:13:18 ==============================================
 
 A 0,67 %-os arány-eltérés az, amitől kiegyenlítés nélkül a robot 2 m alatt
 kb. 7 cm-t kanyarodna el magától — pontosan ezt tünteti el a keresztcsatolás.
