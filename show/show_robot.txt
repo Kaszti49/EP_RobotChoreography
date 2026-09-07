@@ -59,41 +59,68 @@ const int R = ROBOT - 1;     // tomb-index
 //  Toltsd ki a robot_adatok.md tablazatabol! A sorrend: robot 1, 2, 3, 4, 5, 6.
 //  A lenti szamok NEVLEGESEK -- meres nelkul a show nem lesz szinkronban.
 
+// MELYIK ROBOT VAN TENYLEG BEMERVE?
+//  false = a sora meg NEVLEGES adat. A robot ilyenkor is elindul, de
+//  hangosan figyelmeztet, es a K4 egyaltalan nem hajlando lefutni rajta.
+//  Ird at true-ra, amikor a K0..K4 lanc vegigment az adott roboton.
+const bool MERVE[6] = { true, false, false, false, false, false };
+
 // K1: mm egy impulzusra { bal, jobb }
+//  robot 1: 3 tolas atlaga 1000 mm-en (2956,0 / 2936,3 imp), arany 0,99335
 const float MM_PER_IMP[6][2] = {
-  {0.34040, 0.34040},   // robot 1
-  {0.34040, 0.34040},   // robot 2
-  {0.34040, 0.34040},   // robot 3
-  {0.34040, 0.34040},   // robot 4
-  {0.34040, 0.34040},   // robot 5
-  {0.34040, 0.34040}    // robot 6
+  {0.33829, 0.34056},   // robot 1  -- MERT (2026-09-07)
+  {0.34040, 0.34040},   // robot 2  -- nevleges, MEG NINCS BEMERVE
+  {0.34040, 0.34040},   // robot 3  -- nevleges, MEG NINCS BEMERVE
+  {0.34040, 0.34040},   // robot 4  -- nevleges, MEG NINCS BEMERVE
+  {0.34040, 0.34040},   // robot 5  -- nevleges, MEG NINCS BEMERVE
+  {0.34040, 0.34040}    // robot 6  -- nevleges, MEG NINCS BEMERVE
 };
 
 // K2: effektiv nyomtav mm-ben
+//  FIGYELEM: EGYIK robot nyomtavja SINCS meg bemerve. A 153,0 a tabori
+//  becsles (354 imp / 90 fok). A K2-t ujra kell futtatni -- a 2026-09-07-i
+//  probalkozas ervenytelen volt, mert 2x tul nagy MM_PER_IMP-pel szamolt,
+//  ezert 5 helyett csak 2,5 kort fordult a robot.
 const float NYOMTAV_MM[6] = { 153.0, 153.0, 153.0, 153.0, 153.0, 153.0 };
 
 // K0/K3: holtsav PWM { bal, jobb }
+//  robot 1: K0 ket futasanak atlaga (bal 25/25/30/25, jobb 30/25/25/25).
+//  A K3 illesztett metszete {29,27} volt -- 3 PWM-en belul, rendben.
 const int HOLTSAV[6][2] = {
-  {60, 60}, {60, 60}, {60, 60}, {60, 60}, {60, 60}, {60, 60}
+  {26, 26},   // robot 1  -- MERT
+  {60, 60}, {60, 60}, {60, 60}, {60, 60}, {60, 60}
 };
 
 // K3: feed-forward, PWM egy impulzus/s sebesseghez { bal, jobb }
+//  robot 1: a K3 elso (ervenyes) futasabol, PWM 60..120
 const float KFF[6][2] = {
-  {0.20000, 0.20000}, {0.20000, 0.20000}, {0.20000, 0.20000},
+  {0.04353, 0.04278},   // robot 1  -- MERT
+  {0.20000, 0.20000}, {0.20000, 0.20000},
   {0.20000, 0.20000}, {0.20000, 0.20000}, {0.20000, 0.20000}
 };
 
 // K3: a show-ban megengedett legnagyobb kerek-sebesseg (imp/s), a mert max 65 %-a
-const int VMAX_IMPS[6] = { 600, 600, 600, 600, 600, 600 };
+//  robot 1: a leglassabb kerek PWM 120-nal 2020 imp/s volt -> 65 % = 1313.
+//  Ez OVATOS ertek: a K3 csak PWM 120-ig mert. Ha ujramered 240-ig, nagyobb lesz.
+const int VMAX_IMPS[6] = { 1313, 600, 600, 600, 600, 600 };
 
 // K4: hangolt PD + keresztcsatolas (a KP/KD nevek a keretben foglaltak!)
+//  Ezek meg KIINDULASI ertekek -- a K4 hangolasi menete (P -> D -> KSYNC) adja
+//  a vegleges szamokat. Egyik robot sincs meg hangolva.
 const float PD_KP[6]    = { 0.60, 0.60, 0.60, 0.60, 0.60, 0.60 };
 const float PD_KD[6]    = { 0.02, 0.02, 0.02, 0.02, 0.02, 0.02 };
 const float PD_KSYNC[6] = { 0.30, 0.30, 0.30, 0.30, 0.30, 0.30 };
 
-// K0: elojelek. Alapbol mind +1; csak akkor ird at, ha a K0 mast mondott
-// ES a Muszerfal "Enkoder-irany felismerese" (N,AUTO) sem oldotta meg.
-const int ENC_ELOJEL[6][2] = { {1,1}, {1,1}, {1,1}, {1,1}, {1,1}, {1,1} };
+// K0: elojelek.
+//  ROBOT 1: a jobb enkoder FORDITVA szamol (a K0 ketszer is -818 / -823-at
+//  irt elore hajtva), es az N,AUTO nem oldotta meg. Ezert itt -1.
+//
+//  !!! HA LEFUTTATOD AZ N,AUTO-T A MUSZERFALON, EZ AZ ERTEK ROSSZ LESZ !!!
+//  Az N,AUTO a keretben forditja meg az elojelet; ha itt IS -1 all, a ketto
+//  kioltja egymast, es megint elszalad a robot. A sorrend mindig:
+//    1) K0 futtatas  ->  2) a K0 altal kiirt ENC_ELOJEL sort ide bemasolni.
+//  A K0 keszen kiirja a bemasolando sort.
+const int ENC_ELOJEL[6][2] = { {1,-1}, {1,1}, {1,1}, {1,1}, {1,1}, {1,1} };
 const int MOT_ELOJEL[6][2] = { {1,1}, {1,1}, {1,1}, {1,1}, {1,1}, {1,1} };
 
 
@@ -114,6 +141,20 @@ int   TARTALEK_MOD     = 1;      // 0 = csak fenyjelre indul; 1 = visszaszamlala
 unsigned long VISSZASZAMLALAS_MS = 10000;   // TARTALEK_MOD=1 eseten ennyi ido utan magatol indul
 
 int   TELEMETRIA_CIKLUS = 50;    // hany 20 ms-os ciklusonkent irjon naplot (50 = 1 mp)
+
+// PWM-plafon. SAJAT nev SZANDEKOSAN!
+//  A Segedlet dokumental egy `maximumPWM` valtozot, DE a robotra feltoltott
+//  keret 2.0 NEM adja: erre hivatkozva a vazlat nem fordul le
+//  ("maximumPWM was not declared"). Ne hasznald azt a nevet -- ez a sajatunk.
+//  255 = a hardver maximuma, vagyis nincs mesterseges korlat. A szabalyzo
+//  mozgasteret nem EZ tartja fenn, hanem a VMAX_IMPS (a mert max 65 %-a).
+const int PWM_PLAFON = 255;
+
+// BIZTONSAGI LEALLAS: ha a kovetesi hiba ennyi cikluson at vegig telitesben
+//  van, valami alapvetoen rossz (rossz enkoder-elojel, akadt kerek, lemerult
+//  akku). Ilyenkor a robot MEGALL, nem pedig teljes gazzal belemegy a
+//  kozonsegbe. 150 ciklus = 3 masodperc.
+const int TELITES_LEALLAS = 150;
 
 
 // ============ 4. A KOREOGRAFIA FORMATUMA ============
@@ -159,7 +200,7 @@ int pwmSzamol(float u, int oldal) {
   int   elojel = (u > 0) ? 1 : -1;
   float nagysag = (u > 0) ? u : -u;
   int   p = HOLTSAV[R][oldal] + (int)(nagysag + 0.5);
-  if (p > maximumPWM) p = maximumPWM;
+  if (p > PWM_PLAFON) p = PWM_PLAFON;
   return elojel * p * MOT_ELOJEL[R][oldal];
 }
 
@@ -282,6 +323,15 @@ void indulas() {
   uzenet("SHOW ROBOT " + String(ROBOT) + " -- elesitve.");
   uzenet("mm/imp " + String(MM_PER_IMP[R][0], 5) + "/" + String(MM_PER_IMP[R][1], 5)
          + "  nyomtav " + String(NYOMTAV_MM[R], 1) + " mm  vmax " + String(VMAX_IMPS[R]) + " imp/s");
+  uzenet("ENC_ELOJEL " + String(ENC_ELOJEL[R][0]) + "/" + String(ENC_ELOJEL[R][1])
+         + "  holtsav " + String(HOLTSAV[R][0]) + "/" + String(HOLTSAV[R][1]));
+
+  if (!MERVE[R]) {
+    uzenet("!!! FIGYELEM: a robot " + String(ROBOT) + " NINCS BEMERVE.");
+    uzenet("!!! A fenti szamok NEVLEGESEK -- ez a robot NEM lesz szinkronban.");
+    uzenet("!!! Futtasd vegig a K0..K4 lancot, aztan MERVE[" + String(R) + "] = true.");
+  }
+
   uzenet("A koreografia " + String(SHOW_DB[R]) + " lepes. Varakozas a kozos fenyjelre...");
 }
 
@@ -367,6 +417,21 @@ void vezerles() {
   telitesSzamlalo = telites ? telitesSzamlalo + 1 : 0;
   if (telitesSzamlalo == 75)
     uzenet("FIGYELEM: tartos kovetesi hiba -- akad a kerek, csuszik, vagy gyenge az akku!");
+
+  // BIZTONSAGI LEALLAS. Tartos telites azt jelenti, hogy a szabalyzo egy
+  // olyan hibat probal ledolgozni, amit nem tud -- ilyenkor az egyik kerek
+  // plafonon marad. Pontosan ez tortent 2026-09-07-en a rossz enkoder-
+  // elojellel: a jobb kerek 11 masodpercig teljes gazzal ment. Inkabb
+  // alljon meg a robot, mint hogy elszaladjon.
+  if (telitesSzamlalo >= TELITES_LEALLAS) {
+    motor(0, 0);
+    shAllapot = 2;
+    uzenet("!!! BIZTONSAGI LEALLAS: " + String(TELITES_LEALLAS)
+           + " cikluson at telitesben a kovetesi hiba.");
+    uzenet("hibaBal=" + String(hibaBal, 0) + " hibaJobb=" + String(hibaJobb, 0));
+    uzenet("Nezd meg: jo-e az ENC_ELOJEL (futtass K0-t!), akad-e a kerek, jo-e az akku.");
+    return;
+  }
 
   // ---------- 10.5 PD + keresztcsatolas ----------
   float dB = (hibaBal  - elozoHibaBal)  / dt;
