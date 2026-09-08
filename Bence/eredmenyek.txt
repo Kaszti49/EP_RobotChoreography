@@ -1,0 +1,134 @@
+11:41:00 ismeretlen parancs: ^
+11:41:02 kapcsolódva: TaborRobot-C2
+11:41:04 N,1,-1,-1,1,408,408,1.00,1.00
+11:41:40 a kódod elindult
+11:41:40
+11:41:40 Program indul
+11:41:40 Visszaszámlálás - 3 mp
+11:41:40 3...
+11:41:43 2...
+11:41:46 1...
+11:41:49 Visszaszámlálás vége
+11:41:49
+11:41:49 Előre 100 @ 100 [0]
+11:41:49 Jobb enkóder előtte: 0
+11:41:49 Bal enkóder előtte: 0
+11:41:49 Jobb enkóder utána: -32
+11:41:49 Bal enkóder utána: 27
+11:41:49 Visszaszámlálás - 2 mp
+11:41:49 2...
+11:41:51 1...
+11:41:53 Visszaszámlálás vége
+11:41:53
+11:41:53 Hátra 100 @ 100 [0]
+11:41:53 Jobb enkóder előtte: 0
+11:41:53 Bal enkóder előtte: 0
+11:41:53 Jobb enkóder utána: 32
+11:41:53 Bal enkóder utána: -22
+11:41:53 Visszaszámlálás - 2 mp
+11:41:53 2...
+11:41:55 1...
+11:41:57 Visszaszámlálás vége
+11:41:58
+11:41:58 Előre 200 @ 100 [0]
+11:41:58 Jobb enkóder előtte: 0
+11:41:58 Bal enkóder előtte: 0
+11:41:58 Jobb enkóder utána: -103
+11:41:58 Bal enkóder utána: 87
+11:41:58 Visszaszámlálás - 2 mp
+11:41:58 2...
+11:42:00 1...
+11:42:02 Visszaszámlálás vége
+11:42:02
+11:42:02 Hátra 200 @ 100 [0]
+11:42:02 Jobb enkóder előtte: 0
+11:42:02 Bal enkóder előtte: 0
+11:42:02 Jobb enkóder utána: 98
+11:42:02 Bal enkóder utána: -98
+11:42:02 Visszaszámlálás - 2 mp
+11:42:02 2...
+11:42:04 1...
+11:42:06 Visszaszámlálás vége
+11:42:06
+11:42:06 Előre 400 @ 100 [0]
+11:42:06 Jobb enkóder előtte: 0
+11:42:06 Bal enkóder előtte: 0
+11:42:06 Jobb enkóder utána: -297
+11:42:06 Bal enkóder utána: 278
+11:42:06 Visszaszámlálás - 2 mp
+11:42:06 2...
+11:42:08 1...
+11:42:10 Visszaszámlálás vége
+11:42:10
+11:42:10 Hátra 400 @ 100 [0]
+11:42:10 Jobb enkóder előtte: 0
+11:42:10 Bal enkóder előtte: 0
+11:42:11 Jobb enkóder utána: 309
+11:42:11 Bal enkóder utána: -297
+11:42:11 Visszaszámlálás - 2 mp
+11:42:11 2...
+11:42:13 1...
+11:42:15 Visszaszámlálás vége
+11:42:15
+11:42:15 Előre 800 @ 100 [0]
+11:42:15 Jobb enkóder előtte: 0
+11:42:15 Bal enkóder előtte: 0
+11:42:16 Jobb enkóder utána: -839
+11:42:16 Bal enkóder utána: 798
+11:42:16 Visszaszámlálás - 2 mp
+11:42:16 2...
+11:42:18 1...
+11:42:20 Visszaszámlálás vége
+11:42:20
+11:42:20 Hátra 800 @ 100 [0]
+11:42:20 Jobb enkóder előtte: 0
+11:42:20 Bal enkóder előtte: 0
+11:42:20 Jobb enkóder utána: 828
+11:42:20 Bal enkóder utána: -804
+11:42:20 Visszaszámlálás - 2 mp
+11:42:20 2...
+11:42:22 1...
+11:42:24 Visszaszámlálás vége
+11:42:24
+11:42:24 Előre 1600 @ 100 [0]
+11:42:24 Jobb enkóder előtte: 0
+11:42:24 Bal enkóder előtte: 0
+11:42:26 Jobb enkóder utána: -2025
+11:42:26 Bal enkóder utána: 1986
+11:42:26 Visszaszámlálás - 2 mp
+11:42:26 2...
+11:42:28 1...
+11:42:30 Visszaszámlálás vége
+11:42:30
+11:42:30 Hátra 1600 @ 100 [0]
+11:42:30 Jobb enkóder előtte: 0
+11:42:30 Bal enkóder előtte: 0
+11:42:32 Jobb enkóder utána: 2056
+11:42:32 Bal enkóder utána: -1985
+11:42:32 Visszaszámlálás - 2 mp
+11:42:32 2...
+11:42:34 1...
+11:42:36 Visszaszámlálás vége
+11:42:36
+11:42:36 Előre 3200 @ 100 [0]
+11:42:36 Jobb enkóder előtte: 0
+11:42:36 Bal enkóder előtte: 0
+11:42:39 Jobb enkóder utána: -4561
+11:42:39 Bal enkóder utána: 4536
+11:42:39 Visszaszámlálás - 2 mp
+11:42:39 2...
+11:42:41 1...
+11:42:43 Visszaszámlálás vége
+11:42:43
+11:42:43 Hátra 3200 @ 100 [0]
+11:42:43 Jobb enkóder előtte: 0
+11:42:43 Bal enkóder előtte: 0
+11:42:46 Jobb enkóder utána: 4327
+11:42:46 Bal enkóder utána: -4381
+11:42:46 Visszaszámlálás - 2 mp
+11:42:46 2...
+11:42:48 1...
+11:42:50 Visszaszámlálás vége
+11:42:50
+11:42:50 Program vége
+11:42:50 
