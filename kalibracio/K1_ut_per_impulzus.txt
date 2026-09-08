@@ -54,6 +54,21 @@ int   ALLAS_MS    = 2000;     // ennyi mozdulatlansag utan irja ki az eredmenyt
 const float IMP_PER_FORDULAT = 408.0;
 const float MM_PER_FORDULAT  = 138.9;
 
+// --------------------- elojel (a K0 EREDMENY sorabol) ---------------------
+//  Robot 1: a jobb enkoder forditva szamol.
+//  EZ KELL az elojel-ellenorzeshez: nyers ertekekkel egy forditott enkodereju
+//  robot egyenes tolasnal is "ellentetes elojelt" mutatna, es hibasan allna le.
+const int ENC_EL[2] = { 1, -1 };   // <<< a K0 altal kiirt ENC_ELOJEL sor
+
+// --------------------- TOLAS IRANYA ---------------------
+//  A programnak mindegy, melyik iranyba tolod -- magatol felismeri es kiirja.
+//  DE MINDKET IRANYT MERD MEG, es hasonlitsd ossze!
+//
+//  MIERT: az enkoder ugyanannyi impulzust KELL adjon elore es hatra is.
+//  Ha az egyik kerek HATRA kevesebbet szamol, akkor az az ENKODER ejt
+//  impulzusokat -- nem a motor gyenge. A ketto teljesen mas hibat jelent,
+//  es ez a tolas-teszt (motor nelkul, tiszta geometria) valasztja szet oket.
+
 // --------------------- allapot ---------------------
 long  utolsoBal   = 0;
 long  utolsoJobb  = 0;
@@ -93,20 +108,29 @@ void vezerles() {
     kiirtuk = true;
 
     // ---- ELOJEL-ELLENORZES (passziv: nem hajtunk, csak nezzuk) ----
-    //  Egyenes tolasnal a KET enkodernek UGYANARRA kell szamolnia.
-    //  Ha ellentetes elojeluek, forditva van bekotve az egyik -- ezt a
-    //  K1 eddig csendben elnyelte (abszolut ertek), es csak a K4-ben
-    //  robbant. Most megall itt.
-    if ((encBal > 0 && encJobb < 0) || (encBal < 0 && encJobb > 0)) {
+    //  Egyenes tolasnal a ket enkodernek UGYANARRA kell szamolnia --
+    //  de csak AZ ENC_EL ALKALMAZASA UTAN. Nyers ertekkel egy forditott
+    //  enkodereju robot (mint a robot 1) helyes tolasnal is "ellentetes
+    //  elojelt" mutatna, es a meres hibasan allna le.
+    long eb = encBal  * ENC_EL[0];
+    long ej = encJobb * ENC_EL[1];
+
+    if ((eb > 0 && ej < 0) || (eb < 0 && ej > 0)) {
       uzenet("=========== K1 LEALLT: ELOJEL-HIBA ===========");
-      uzenet("encBal=" + String(encBal) + "  encJobb=" + String(encJobb)
+      uzenet("ENC_EL utan: bal=" + String(eb) + "  jobb=" + String(ej)
              + " -- ELLENTETES elojel egyenes tolasnal!");
-      uzenet("Az egyik enkoder forditva szamol. Futtasd a K0-t, es a kiirt");
-      uzenet("ENC_ELOJEL sort ird be a K4 / show_robot tablazataba.");
+      uzenet("(nyers: encBal=" + String(encBal) + " encJobb=" + String(encJobb)
+             + ", ENC_EL=" + String(ENC_EL[0]) + "/" + String(ENC_EL[1]) + ")");
+      uzenet("Futtasd a K0-t, es a kiirt ENC_ELOJEL sort ird be ide es a");
+      uzenet("K4 / show_robot tablazataba is.");
       uzenet("A meres addig ERVENYTELEN. (Ez a hiba a K4-ben elszalado robotot okoz.)");
       uzenet("==============================================");
       return;
     }
+
+    // melyik iranyba toltuk? (a MERES ugyanaz, csak a naplo legyen egyertelmu)
+    bool elore = (eb >= 0);
+    uzenet("=========== K1 EREDMENY -- " + String(elore ? "ELORE" : "HATRA") + " tolas ===========");
 
     long b = encBal  < 0 ? -encBal  : encBal;
     long j = encJobb < 0 ? -encJobb : encJobb;
@@ -121,7 +145,6 @@ void vezerles() {
     float mmJobb = UT_MM / (float)j;
     float arany  = mmBal / mmJobb;
 
-    uzenet("=========== K1 EREDMENY ===========");
     uzenet("impulzus  bal=" + String(b) + "  jobb=" + String(j) + "   (ut: " + String(UT_MM, 0) + " mm)");
     uzenet("--> MM_PER_IMP a tablazatba: { " + String(mmBal, 5) + ", " + String(mmJobb, 5) + " }");
     uzenet("arany bal/jobb = " + String(arany, 4) + "   (1,000 = tokeletesen egyforma kerekek)");
@@ -155,6 +178,15 @@ void vezerles() {
 
     if (arany > 1.03 || arany < 0.97)
       uzenet("FIGYELEM: 3 %-nal nagyobb elteres a ket kerek kozott -- nezd meg, nem csuszott-e meg tolas kozben.");
+
+    // ---- ENKODER-SZIMMETRIA: a legfontosabb kovetkezo meres ----
+    uzenet("--- ENKODER-SZIMMETRIA ---");
+    uzenet("Most told vegig UGYANEKKORA utat a MASIK iranyba is, es hasonlitsd ossze:");
+    uzenet("  " + String(elore ? "ELORE" : "HATRA") + ": bal=" + String(b) + " jobb=" + String(j));
+    uzenet("Ha valamelyik kerek a MASIK iranyban 2 %-nal kevesebbet szamol, akkor");
+    uzenet("AZ AZ ENKODER EJT IMPULZUSOKAT -- nem a motor gyenge. A motor itt");
+    uzenet("nincs is bekapcsolva, tehat amit latsz, az tiszta enkoder-hiba.");
+
     uzenet("Ismeteld 3-szor, es a HAROM ATLAGAT ird be a robot_adatok.md-be.");
     uzenet("===================================");
   }
