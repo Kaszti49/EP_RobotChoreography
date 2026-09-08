@@ -119,14 +119,27 @@ void indulas() {
   uzenet("HOLTSAV bal  elore/hatra: " + String(hBalElore) + " / " + String(hBalHatra));
   uzenet("HOLTSAV jobb elore/hatra: " + String(hJobbElore) + " / " + String(hJobbHatra));
 
-  // a show-vezerles kerekenkent EGY szamot hasznal: a ket irany atlaga
+  // A show-vezerles IRANYONKENT hasznalja a holtsavat -- a regi kod itt
+  // atlagolta a ket iranyt, es ezzel eldobta pont azt, ami a forgatasnal
+  // szamit (forgasnal az egyik kerek elore, a masik hatra megy).
   if (hBalElore > 0 && hBalHatra > 0 && hJobbElore > 0 && hJobbHatra > 0) {
-    int hBal  = (hBalElore + hBalHatra) / 2;
-    int hJobb = (hJobbElore + hJobbHatra) / 2;
-    uzenet("--> HOLTSAV a tablazatba:  { " + String(hBal) + ", " + String(hJobb) + " }");
-    if (hBal > 100 || hJobb > 100)
+    uzenet("--> HOLTSAV a tablazatba (iranyonkent):");
+    uzenet("    { {" + String(hBalElore) + "," + String(hBalHatra) + "}, {"
+           + String(hJobbElore) + "," + String(hJobbHatra) + "} }");
+    uzenet("    (a sorrend: {bal elore, bal hatra}, {jobb elore, jobb hatra})");
+
+    if (hBalElore > 100 || hBalHatra > 100 || hJobbElore > 100 || hJobbHatra > 100)
       uzenet("FIGYELEM: 100 folotti holtsav = szorulo kerek, gyenge akku vagy laza tengely!");
-    int kulonbseg = hBal - hJobb;
+
+    int kBal = hBalElore - hBalHatra;   if (kBal < 0) kBal = -kBal;
+    int kJobb = hJobbElore - hJobbHatra; if (kJobb < 0) kJobb = -kJobb;
+    if (kBal > 15 || kJobb > 15) {
+      uzenet("FIGYELEM: egy keren belul nagy az IRANY-kulonbseg (bal " + String(kBal)
+             + ", jobb " + String(kJobb) + " PWM).");
+      uzenet("  Ez a kerek az egyik iranyban nehezebben indul. A K3 iranyonkenti");
+      uzenet("  merese megmondja, mekkora a kulonbseg sebessegben is.");
+    }
+    int kulonbseg = (hBalElore + hBalHatra) / 2 - (hJobbElore + hJobbHatra) / 2;
     if (kulonbseg < 0) kulonbseg = -kulonbseg;
     if (kulonbseg > 25)
       uzenet("FIGYELEM: a ket kerek holtsava nagyon elter (" + String(kulonbseg) + " PWM) -- nezd meg a mechanikat.");
