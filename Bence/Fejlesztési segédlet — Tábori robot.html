@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="hu"><head>
+<meta http-equiv="content-type" content="text/html; charset=UTF-8"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fejlesztési segédlet — Tábori robot</title>
+<style>
+:root{--bg:#0f1420;--panel:#171d2b;--ink:#e6eaf3;--mut:#9aa4ba;--acc:#0f3460;--kod:#0b1019;--coral:#ff6b81;--line:#2b3446}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "Segoe UI",system-ui,sans-serif}
+header{background:var(--acc);color:#fff;padding:14px 22px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+header h1{margin:0;font-size:1.25rem}header a{color:#cfe0ff}
+nav{position:sticky;top:0;background:var(--panel);border-bottom:1px solid var(--line);padding:8px 22px;display:flex;gap:14px;flex-wrap:wrap;font-size:.95em;z-index:2}
+a{color:#93c5fd}
+nav a{color:#93c5fd;text-decoration:none;font-weight:600}nav a:hover{text-decoration:underline}
+main{max-width:980px;margin:0 auto;padding:18px 22px 60px}
+section{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 22px;margin:18px 0}
+h2{margin:0 0 10px;font-size:1.2rem;color:#93c5fd}h3{margin:16px 0 6px;font-size:1.02rem}
+code,pre{font-family:"JetBrains Mono",Consolas,monospace;font-size:.92em}
+code{background:#202839;padding:1px 6px;border-radius:5px}
+pre{background:var(--kod);color:#e8eefc;padding:12px 14px;border-radius:8px;overflow:auto;margin:8px 0}
+.api{border-top:1px solid var(--line);padding:10px 0}.api:first-child{border-top:0}
+.api .a{font-family:"JetBrains Mono",Consolas,monospace;font-weight:700;color:var(--coral)}
+.api .t{color:var(--mut);font-size:.9em;margin-left:8px}
+.api p{margin:4px 0 0}.tipp{border-left:4px solid var(--coral);background:#2a1f26;padding:10px 14px;border-radius:6px;margin:10px 0}
+table{border-collapse:collapse;width:100%}td,th{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}th{color:var(--mut);font-weight:600}
+td.k{font-family:"JetBrains Mono",Consolas,monospace;white-space:nowrap;color:var(--coral);font-weight:700}
+</style></head><body>
+<header><h1>🤖 Tábori robot — fejlesztési segédlet</h1><span>keret 2.0 · <a href="https://tabor.enterpartner.hu/fejlesztes/">vissza a fejlesztőfelületre</a></span></header>
+<nav><a href="#kezdes">Hogyan működik</a><a href="#fuggvenyek">Függvények</a><a href="#valtozok">Változók</a><a href="#minta">Mintakódok</a><a href="#pid">PID hangolás</a><a href="#parancsok">Műszerfal-parancsok</a><a href="#arduino">Arduino-alapok</a><a href="#tippek">Tippek &amp; hibák</a></nav>
+<main>
+<section id="kezdes"><h2>Hogyan működik a robot programja</h2>
+<p>A robotot egy <b>keret</b> vezérli (ez már fent van rajta). Te két függvényt írsz a szerkesztőben:</p>
+<ul><li><code>void indulas()</code> — <b>egyszer</b> fut le a ▶ Start megnyomásakor (előkészítés).</li>
+<li><code>void vezerles()</code> — <b>20 ezredmásodpercenként</b>, újra és újra, amíg a feladat fut. Itt nézed meg a szenzorokat és állítod a motorokat.</li></ul>
+<p><b>Mentés:</b> a kód a böngészőben automatikusan megmarad, és ha a Csapat mező ki van töltve, a szerverre is mentődik (💾 gomb, minden fordításkor, és gépelés után pár mp-cel) — másnap bármelyik gépen a 📂 gombbal a csapatnév alapján visszatölthető.</p>
+<p>Fordítás + feltöltés: <b>Ctrl+Enter</b> (kb. 1 perc). A hibák a szerkesztő alatt jelennek meg; a sorszámra kattintva a hibás sorhoz ugrik. <b>Kiegészítés</b> gépelés közben, vagy <b>Ctrl+Szóköz</b>-zel.</p>
+<div class="tipp"><b>A robot felépítése:</b> 2 kerék, mindkettőn motor + enkóder (408 impulzus = 1 fordulat = 138,9 mm). Alul <b>5 infravörös szenzor</b> balról jobbra: <code>szenzor[0]</code>…<code>szenzor[4]</code>, pozíciójuk −2, −1, 0, +1, +2. <b>Fehér = nagy szám, fekete = kis szám.</b> A <code>vonalPozicioSzamol()</code> a vonal helyét <b>−2000…+2000</b> skálán adja (9999 = nincs vonal).</div>
+</section>
+<section id="fuggvenyek"><h2>Függvények, amiket használhatsz</h2><div id="fv"><div class="api"><span class="a">motor(bal, jobb)</span><p>A két motor sebessége −255…255 (negatív = hátra, 0 = áll). Ez a leggyakoribb parancs: motor(120, 120) előre, motor(100, 60) enyhén jobbra kanyarodik.</p><pre>motor(alapSebesseg - korr, alapSebesseg + korr);</pre></div><div class="api"><span class="a">varj(ms)</span><p>Vár ms ezredmásodpercet. Közben a robot figyel a Műszerfalra (Stop gomb működik), ezért ezt használd delay() helyett.</p><pre>varj(500);</pre></div><div class="api"><span class="a">uzenet(szoveg)</span><p>Szöveget küld a Műszerfal naplójába (és a fekete dobozba). Számot így: uzenet("pozicio: " + String(poz));</p><pre>uzenet("Robot kesz.");</pre></div><div class="api"><span class="a">enkoderNullaz()</span><p>Mindkét kerék impulzus-számlálóját nullázza. Indulás előtt, vagy ha távolságot akarsz mérni onnantól.</p><pre>enkoderNullaz();</pre></div><div class="api"><span class="a">menj(impBal, impJobb, pwm)</span><p>Enkóder alapján pontosan megtett út: a bal/jobb kerék ennyi impulzust tesz meg (408 impulzus = 1 kerékfordulat = 138,9 mm), pwm sebességgel. Igaz értékkel tér vissza, ha sikerült. Negatív impulzus = hátra; ellentétes előjel = helyben fordulás.</p><pre>menj(408, 408, 120);   // egy kerékfordulat előre
+menj(300, -300, 100);  // helyben fordul</pre></div><div class="api"><span class="a">szenzorOlvas()</span><p>Frissíti a szenzor[0..4] tömböt az 5 infravörös szenzor nyers értékével (0…4095). A vezerles() előtt a keret automatikusan meghívja, kézzel csak saját ciklusban kell.</p><pre>szenzorOlvas();
+if (szenzor[2] &lt; kuszob) { /* középen fekete */ }</pre></div><div class="api"><span class="a">szenzorNormal()</span><p>A nyers szenzor[] értékeket a kalibráció (fehér/fekete) alapján 0…1000-re skálázza a szenzorNorm[0..4] tömbbe (1000 = biztos fekete). A vonalPozicioSzamol() ebből dolgozik.</p><pre>szenzorOlvas(); szenzorNormal();
+if (szenzorNorm[2] &gt; 500) { /* középen vonal */ }</pre></div><div class="api"><span class="a">vonalPozicioSzamol()</span><p>A szenzorokból kiszámolja a vonal helyét: −2000 (bal szél) … 0 (közép) … +2000 (jobb szél). 9999, ha egyik szenzor sem lát vonalat (ilyenkor vonalLatszik == false). Ajánlott erősítés: Kp 0,02…0,1 (u = Kp·poz).</p><pre>int poz = vonalPozicioSzamol();   // -2000..2000, 9999 = nincs vonal
+if (poz == 9999) { /* keresés */ }</pre></div><div class="api"><span class="a">void indulas()</span><p>A TE függvényed: egyszer fut le, amikor a Műszerfalon a ▶ Start-ot megnyomod. Ide jön az előkészítés (nullázás, üzenet, várakozás).</p><pre>void indulas() {
+  uzenet("Indul!");
+  enkoderNullaz();
+  motor(0, 0);
+  varj(500);
+}</pre></div><div class="api"><span class="a">void vezerles()</span><p>A TE függvényed: a keret ~50-szer hívja másodpercenként (20 ms-onként), amíg a feladat fut. Itt olvasod a szenzorokat és állítod a motorokat. NE tegyél bele hosszú várakozást!</p><pre>void vezerles() {
+  int poz = vonalPozicioSzamol();      // -2000..2000
+  if (poz == 9999) { motor(80, -80); return; }
+  int korr = poz / 20;                 // = 0,05 * poz
+  motor(alapSebesseg + korr, alapSebesseg - korr);
+}</pre></div></div></section>
+<section id="valtozok"><h2>Beállítások és változók a kódban</h2><div id="vt"><div class="api"><span class="a">int szenzor[5]</span><p>Az 5 IR-szenzor nyers értéke balról jobbra: szenzor[0] … szenzor[4]. FEHÉR = nagy szám, FEKETE = kicsi.</p></div><div class="api"><span class="a">int szenzorNorm[5]</span><p>Kalibrált szenzorértékek 0…1000 (0 = fehér, 1000 = fekete) — a szenzorNormal() tölti.</p></div><div class="api"><span class="a">bool vonalLatszik</span><p>Igaz, ha a vonalPozicioSzamol() lát vonalat; hamis, ha elveszett (ilyenkor 9999-et ad).</p></div><div class="api"><span class="a">int kuszob = 1700</span><p>Ez alatt feketének tekintjük a felületet. Kalibrálás után a Műszerfal is mutatja a jó értéket.</p></div><div class="api"><span class="a">int alapSebesseg = 120</span><p>Normál haladási sebesség (PWM 0…255).</p></div><div class="api"><span class="a">int minimumPWM = 70</span><p>A motor ennél kisebb pozitív PWM-et nem kap — így nem áll le kanyarban.</p></div><div class="api"><span class="a">int maximumPWM = 255</span><p>Maximális motorsebesség.</p></div><div class="api"><span class="a">int maxKorrekcio = 75</span><p>A kormánykorrekció legnagyobb megengedett értéke.</p></div><div class="api"><span class="a">float utolsoPozicio</span><p>Az utoljára látott vonalpozíció (−2000…+2000) — vonalvesztésnél ebből tudod, merre keress.</p></div><div class="api"><span class="a">int keresesiIrany</span><p>−1 = balra keressen, +1 = jobbra keressen, ha elveszett a vonal.</p></div><div class="api"><span class="a">int vonalvesztesSzamlalo</span><p>Hány ciklus (20 ms) óta nem látjuk a vonalat.</p></div><div class="api"><span class="a">long encBal, encJobb</span><p>A bal/jobb kerék enkóder-számlálója (impulzus). 408 impulzus = 1 fordulat = 138,9 mm. enkoderNullaz() nullázza.</p></div><div class="api"><span class="a">int kalFeher[5], kalFekete[5]</span><p>A Műszerfal kalibrálásakor mért fehér/fekete nyers értékek szenzoronként — ebből normálunk 0…1000-re (lásd a PID + szenzorok példát).</p></div><div class="api"><span class="a">const uint8_t SENSOR_PIN[5]</span><p>Az 5 IR-szenzor ADC-lába balról jobbra; nyers olvasás: analogRead(SENSOR_PIN[i]) → 0…4095.</p></div></div></section>
+<section id="minta"><h2>Mintakódok</h2>
+<h3>1. A legegyszerűbb vonalkövetés (arányos szabályzás)</h3>
+<pre>void indulas() {
+  uzenet("Indul!");
+  enkoderNullaz();
+  motor(0, 0);
+  varj(500);
+}
+
+void vezerles() {
+  int poz = vonalPozicioSzamol();      // -2000 ... +2000, vagy 9999 ha nincs vonal
+  if (poz == 9999) {                    // elveszett a vonal: arra keres, amerre utoljára látta
+    motor(alapSebesseg * keresesiIrany, -alapSebesseg * keresesiIrany);
+    return;
+  }
+  utolsoPozicio = poz;
+  keresesiIrany = (poz &lt; 0) ? -1 : 1;
+  int korr = poz / 20;                  // = 0,05 · poz: minél távolabb a vonal, annál erősebb a kormányzás
+  motor(alapSebesseg + korr, alapSebesseg - korr);
+}</pre>
+<h3>2. Pontos mozgás enkóderrel</h3>
+<pre>void indulas() {
+  enkoderNullaz();
+  menj(816, 816, 120);     // 2 kerékfordulat előre (2 × 138,9 mm)
+  menj(300, -300, 100);    // helyben fordulás
+  menj(816, 816, 120);
+  motor(0, 0);
+}
+void vezerles() { }        // most nincs folyamatos vezérlés</pre>
+<h3>3. Szenzor-figyelés üzenettel</h3>
+<pre>void vezerles() {
+  szenzorOlvas();
+  szamlalo++;
+  if (szamlalo % 25 == 0) {            // 2-szer másodpercenként
+    uzenet("S: " + String(szenzor[0]) + " " + String(szenzor[1]) + " " + String(szenzor[2])
+           + " " + String(szenzor[3]) + " " + String(szenzor[4]));
+  }
+}</pre>
+<h3>4. Komplett PD-vonalkövetés (a keret szabályzója kódban)</h3>
+<p>A szerkesztőben a <b>Példa</b> lenyílóból a <b>„komplett vezérlés (PD)”</b> tölti be: P+D szabályzás szűrt deriválttal, vonalvesztéskor helyben fordulás — a csúszkák helyett konkrét számokkal (<code>vAlap</code>, <code>vKp</code>, <code>vKd</code>, <code>vDAlfa</code>). Ha a saját vezérlést írod, ebből indulj ki.</p>
+<h3>5. PID + szenzorfeldolgozás lépésről lépésre (a Példa lenyílóban: „PID + szenzorfeldolgozás”)</h3>
+<p>Itt semmit nem kapsz készen: a nyers szenzorjeltől a motorig minden lépés a te kódodban van, külön függvényben — így látszik, mi történik a jellel, és bármelyik lépést kicserélheted.</p>
+<table><thead><tr><th>Lépés</th><th>Függvény a példában</th><th>Mit csinál</th></tr></thead><tbody>
+<tr><td class="k">1. Mérés</td><td><code>meres()</code></td><td>5 × <code>analogRead(SENSOR_PIN[i])</code> → nyers 0…4095 (fehér = nagy).</td></tr>
+<tr><td class="k">2. Kondicionálás</td><td><code>kondicionalas()</code></td><td><b>Zajszűrés</b> exponenciális mozgóátlaggal (<code>uj = regi + (nyers − regi)·alfa</code>; alfa 1,0 = nincs szűrés, 0,2 = sima, de lassú), majd <b>kalibráció + normálás</b>: a fehér…fekete tartományt (<code>kalFeher[i]</code>, <code>kalFekete[i]</code> — a Műszerfal kalibrálja) 0…1000-re húzzuk, hogy minden szenzor ugyanazt jelentse.</td></tr>
+<tr><td class="k">3. Pozíció</td><td><code>pozicioSzamol()</code></td><td>Súlyozott átlag: a szenzorok helye (−2…+2)·1000, súlyuk a „mennyire lát feketét” → <code>pozicio</code> −2000…+2000; ha egyik sem lép át a küszöbön → <code>latVonal = false</code>.</td></tr>
+<tr><td class="k">4. Döntés</td><td><code>dontes()</code></td><td><b>PID</b>: <code>u = Kp·hiba + I + Kd·d</code>. Az <b>I-tag</b> a hibák összege (tartós elhúzást tüntet el), <b>anti-windup</b>-pal korlátozva, vonalvesztéskor törölve; a <b>D-tag</b> szűrt változás (csillapít).</td></tr>
+<tr><td class="k">5. Beavatkozás</td><td><code>beavatkozas()</code></td><td><code>motor(alap + u, alap − u)</code>, −255…255 közé korlátozva.</td></tr>
+</tbody></table>
+<div class="tipp"><b>Hangolás:</b> a teljes menet (P → D → I → sebesség, Ziegler–Nichols képletek, tünet-táblázat) a <a href="#pid">PID hangolás</a> szakaszban.</div>
+</section>
+<section id="pid"><h2>A PID hangolás menete</h2>
+<p>A szabályzó: <code>u = Kp·hiba + I + Kd·d</code>, ahol a hiba a vonal helye (−2000…+2000, cél: 0), <code>I</code> a hibák összege, <code>d</code> a hiba változása. A hangolás mindig <b>ugyanabban a sorrendben</b> megy: P → D → I → sebesség. Egyszerre <b>egy</b> számot változtass, és minden változás után legalább 2–3 kört nézz meg.</p>
+<h3>0. Előkészítés (enélkül minden hangolás félrevisz)</h3>
+<ul>
+<li><b>Kalibrálás</b> a Műszerfalon (fehér és fekete felületen) — a normált 0…1000 skála ettől lesz igaz. Kalibrálás után nézd meg a naplóban: fehéren ~0, a vonalon ~1000 legyen.</li>
+<li><b>Előjel-teszt:</b> tedd a robotot úgy, hogy a vonal a <i>jobb</i> szenzorok alatt legyen → a pozíciónak <b>pozitívnak</b> kell lennie, és a robotnak <b>jobbra</b> kell fordulnia (bal kerék gyorsabb). Ha fordítva, a <code>motor(alap+u, alap−u)</code> előjelét cseréld — ne a Kp-t tedd negatívvá.</li>
+<li><b>Alacsony sebesség:</b> hangolni 60–80 alapsebességgel kezdj, teli elemmel (gyenge elemmel más lesz minden szám).</li>
+</ul>
+<h3>1. Csak P — a kritikus erősítés (Ku) és a lengés ideje (Tu)</h3>
+<ol>
+<li><code>Ki = 0</code>, <code>Kd = 0</code>, <code>Kp = 0,02</code>. Indítsd el a robotot a vonalon.</li>
+<li>Ha lustán, nagy ívben követi, kanyarban lecsúszik → emeld a Kp-t kb. másfélszeresére (0,02 → 0,03 → 0,045 → 0,07 …).</li>
+<li>Egyszer csak elkezd <b>kígyózni</b>: egyenesben is jobbra-balra leng. Amikor a lengés <b>se nem csillapodik, se nem nő</b> (állandó amplitúdó), az a kritikus erősítés: <b>Ku</b>. Mérd meg egy teljes lengés idejét: <b>Tu</b> (másodperc) — pl. 10 lengés stopperrel ÷ 10.</li>
+<li>Ha túllőttél (egyre nagyobb lengés, vagy elveszti a vonalat) → vissza egy lépést; a Ku a két érték között van.</li>
+</ol>
+<div class="tipp"><b>A Műszerfal megcsinálja helyetted:</b> Szabályozás fül → <b>Ziegler–Nichols segéd</b>. Kd = 0 mellett emeld a Kp csúszkát, amíg egyenletesen kígyózik, nyomd meg a <i>Mérés indítása</i> gombot, hagyd 10–20 lengésig futni, majd <i>Kiértékelés</i>: kiírja a Ku-t, a Tu-t és a javasolt Kp/Kd-t (a <i>Beállítom a javasoltat</i> gomb a csúszkákba írja). Ezek a számok ugyanúgy érvényesek a kódban írt vezérlésre is.</div>
+<h3>2. Képletek Ku-ból és Tu-ból (Ziegler–Nichols, a robot 20 ms-os ciklusára átszámolva)</h3>
+<table><thead><tr><th>szabályzó</th><th>Kp</th><th>Kd (a kódban, ciklusonkénti különbségre)</th><th>Ki (a kódban, ciklusonként összegezve)</th><th>mikor</th></tr></thead><tbody>
+<tr><td class="k">P</td><td>0,5 · Ku</td><td>0</td><td>0</td><td>első próbák; marad egy kis állandó hiba</td></tr>
+<tr><td class="k">PD</td><td>0,65 · Ku</td><td>Kp · Tu · 50 / 8 ≈ <b>6 · Kp · Tu</b></td><td>0</td><td>a 3. példa és a Műszerfal csúszkái — legtöbbször ez elég</td></tr>
+<tr><td class="k">PID</td><td>0,6 · Ku</td><td>Kp · Tu · 50 / 8 ≈ <b>6 · Kp · Tu</b></td><td>Kp · 0,02 / (Tu / 2) = <b>0,04 · Kp / Tu</b></td><td>a 4. példa; ha tartósan egy oldalra húz</td></tr>
+</tbody></table>
+<p><b>Példa:</b> Ku = 0,08 és Tu = 0,6 s → PID: Kp = 0,048; Kd ≈ 6 · 0,048 · 0,6 ≈ <b>0,17</b>; Ki ≈ 0,04 · 0,048 / 0,6 ≈ <b>0,003</b>. (Miért az „50” és a „0,02”: a kód 20 ms-onként fut, a D a két ciklus közti különbséget szorozza, az I ciklusonként összegez — ezért a másodperces képleteket át kell váltani ciklusra.) A képlet <b>kiindulópont</b>, nem végeredmény: utána kézzel finomíts.</p>
+<h3>3. D — a lengés csillapítása</h3>
+<ul>
+<li>Állítsd be a táblázat Kp-jét és Kd-jét. A kígyózásnak el kell tűnnie, a robot „ráül” a vonalra.</li>
+<li>Még leng? → Kd-t emeld 20–30 %-onként. Ha <b>egyenesben remeg / a motorok zúgnak-rángatnak</b> → túl sok a D, vagy zajos a jel: Kd-t csökkentsd, vagy erősítsd a szűrést (a 4. példában <code>szuroAlfa</code> 0,5 → 0,3). A szűrés viszont késleltet — kanyarban ettől csúszhat ki, ezért csak annyit szűrj, amennyit muszáj.</li>
+</ul>
+<h3>4. I — csak ha tartósan egy oldalra húz</h3>
+<ul>
+<li>Tünet: egyenesben a robot nem a vonal közepén, hanem állandóan kicsit mellette megy (pl. az egyik motor gyengébb). Ezt a P+D nem tudja eltüntetni — az I-tag „megtanulja”.</li>
+<li>Kezdd a táblázat Ki-jének a <b>felével</b>. Ha lassan leng, „úszik” a vonal körül → túl sok az I: csökkentsd.</li>
+<li>Az <code>iHatar</code> (anti-windup) legyen kicsi — kb. az alapsebesség 30–50 %-a PWM-ben — különben kanyarban „felhúzza magát” és a kanyar után kivág. Vonalvesztéskor az integrátort <b>nullázd</b> (a 4. példa ezt teszi).</li>
+</ul>
+<h3>5. Sebesség</h3>
+<p>Ha az alacsony sebességen stabil, emeld az alapsebességet 20-asával. Minden lépésnél újra nézd a D-t (általában emelni kell), és kanyarban figyeld a kivágást. Amikor már a legjobb hangolással sem marad a vonalon → ez a robot határa ezen a pályán; inkább kanyarban lassíts (pl. ha <code>abs(poz) &gt; 1000</code>, alap − 20), mint hogy egyenesben is lassú legyen.</p>
+<h3>Tünet → mit állíts</h3>
+<table><thead><tr><th>amit látsz</th><th>valószínű ok</th><th>mit tegyél</th></tr></thead><tbody>
+<tr><td>gyorsan kígyózik egyenesben is</td><td>Kp túl nagy / Kd kevés</td><td>Kd fel, vagy Kp le</td></tr>
+<tr><td>lustán követ, kanyart levág, kicsúszik</td><td>Kp kicsi, vagy túl gyors</td><td>Kp fel; vagy alapsebesség le</td></tr>
+<tr><td>egyenesben remeg, motor zúg</td><td>Kd túl nagy, vagy zajos jel</td><td>Kd le; szűrés kicsit erősebb; kalibrálás ellenőrzése</td></tr>
+<tr><td>állandóan a vonal egyik oldalán megy</td><td>nincs I, vagy az egyik motor gyengébb</td><td>kis Ki; vagy a Műszerfalon motor-kiegyenlítés (gainL/gainR)</td></tr>
+<tr><td>lassú, nagy „úszás” a vonal körül</td><td>I túl nagy</td><td>Ki le, iHatar le</td></tr>
+<tr><td>kanyar után kivág a másik irányba</td><td>az integrátor felhúzta magát</td><td>iHatar le; I nullázása vonalvesztéskor</td></tr>
+<tr><td>késve reagál, mintha „csúszna”</td><td>túl erős szűrés</td><td>szuroAlfa fel (kevesebb szűrés)</td></tr>
+<tr><td>vonalvesztésnél rossz irányba pörög</td><td>utolsó irány rosszul jegyezve</td><td>ellenőrizd az <code>utolsoIrany</code> beállítását a pozíció előjeléből</td></tr>
+<tr><td>tegnap jó volt, ma nem</td><td>elem gyenge, más fény, elcsúszott kalibráció</td><td>V parancs (akku), újrakalibrálás</td></tr>
+</tbody></table>
+<div class="tipp"><b>Mérési fegyelem:</b> minden próbát <b>írj fel</b> (Kp, Kd, Ki, sebesség → mi történt) — a napló <code>uzenet()</code>-sorai és a csapat szerver-naplója erre valók. Egyszerre egy szám; ugyanaz a pálya, ugyanaz az elem-állapot; 2–3 kör átlaga, nem egy szerencsés kör.</div>
+</section>
+<section id="parancsok"><h2>Műszerfal-parancsok (a keret sorosan/Bluetooth-on érti)</h2>
+<p>Ezeket a Műszerfal gombjai küldik; a „parancs” mezőbe kézzel is beírhatod (pl. <code>M,100,100</code>).</p>
+<table><thead><tr><th>Parancs</th><th>Alak</th><th>Mit csinál</th></tr></thead><tbody id="pc"><tr><td class="k">Q</td><td><code>Q,&lt;mód&gt;,&lt;alap&gt;,&lt;kp&gt;,&lt;kd&gt;</code></td><td>PD-vonalkövetés indítása a keret beépített szabályzójával (a Műszerfal ZN-segédje és csúszkái ezt küldik).</td></tr><tr><td class="k">A</td><td><code>A[,&lt;ms&gt;]</code></td><td>A feladat/szabályzó leállítása (opcionálisan ms késleltetéssel).</td></tr><tr><td class="k">S</td><td><code>S</code></td><td>STOP: minden leáll (feladat, szabályzó, motorok).</td></tr><tr><td class="k">M</td><td><code>M,&lt;bal&gt;,&lt;jobb&gt;</code></td><td>Kézi motorteszt: a két motor PWM-je (−255…255). Csak ha nem fut feladat.</td></tr><tr><td class="k">G</td><td><code>G,&lt;impBal&gt;,&lt;impJobb&gt;[,&lt;pwm&gt;]</code></td><td>Menj pontosan: enkóder-cél impulzusban (alap pwm 120). Ugyanaz, mint a menj() a kódban.</td></tr><tr><td class="k">W</td><td><code>W,&lt;balSeb&gt;,&lt;jobbSeb&gt;</code></td><td>Sebességszabályzott hajtás (impulzus/s célértékkel) — a K-val hangolt PI-szabályzóval. 0,0 = leáll.</td></tr><tr><td class="k">K</td><td><code>K[,&lt;KP&gt;[,&lt;KI&gt;]]</code></td><td>A sebességszabályzó PI-paraméterei (W-hez). Paraméter nélkül csak kiírja.</td></tr><tr><td class="k">J</td><td><code>J[,&lt;k&gt;[,&lt;min&gt;]]</code></td><td>Fékút-modell a G/menj pontos megálláshoz (fékezési tényező, minimum).</td></tr><tr><td class="k">C</td><td><code>C[,&lt;KC&gt;]</code></td><td>Kanyar-korrekciós tényező beállítása/kiírása.</td></tr><tr><td class="k">Z</td><td><code>Z</code></td><td>Enkóderek nullázása.</td></tr><tr><td class="k">N</td><td><code>N | N,AUTO | N,&lt;encL&gt;,&lt;encR&gt;,&lt;motL&gt;,&lt;motR&gt;[,&lt;impL&gt;,&lt;impR&gt;]</code></td><td>Robot-beállítás (NVS-be mentve): enkóder- és motor-előjelek, kerekenkénti impulzus/fordulat. N,AUTO = automatikus előjel-felismerés. A Műszerfal „Robot beállítása” doboza ezt küldi.</td></tr><tr><td class="k">B</td><td><code>B,&lt;n&gt; | B,&lt;csapatnév&gt;</code></td><td>Bluetooth-név: TaborRobot-&lt;n&gt; vagy Tabor-&lt;név&gt;, utána a robot ÚJRAINDUL → Windows-ban újra kell párosítani!</td></tr><tr><td class="k">R</td><td><code>R,&lt;hz&gt;</code></td><td>Telemetria gyakorisága (0 = ki, max 200 Hz).</td></tr><tr><td class="k">P</td><td><code>P</code></td><td>Info-sor kérése (verzió, állapot).</td></tr><tr><td class="k">V</td><td><code>V</code></td><td>Akkufeszültség kérése (mV). 6800 mV alatt a keret letilt.</td></tr><tr><td class="k">D</td><td><code>D</code></td><td>Diagnosztika (szenzorok, enkóderek, kalibráció).</td></tr><tr><td class="k">F</td><td><code>F,&lt;méret&gt;[,&lt;md5&gt;]</code></td><td>Firmware-frissítés Bluetooth-on (a Fordít+Feltölt gomb küldi — kézzel nem kell).</td></tr><tr><td class="k">X</td><td><code>X</code></td><td>A Műszerfal „másik gép vezeti” jelzése — belső használat.</td></tr></tbody></table>
+</section>
+<section id="arduino"><h2>Arduino/C++ alapok, amik a kódhoz kellenek</h2><div id="ar"><div class="api"><span class="a">if / else</span><span class="t">if (feltétel) { … } else { … }</span><p>Elágazás.</p></div><div class="api"><span class="a">for</span><span class="t">for (int i = 0; i &lt; 5; i++) { … }</span><p>Számláló ciklus — pl. az 5 szenzoron végigmenni.</p></div><div class="api"><span class="a">while</span><span class="t">while (feltétel) { … }</span><p>Ismétlés, amíg igaz. A vezerles()-ben kerüld a hosszú while-t (a keret 20 ms-onként hív)!</p></div><div class="api"><span class="a">int / float / bool</span><span class="t">int db = 0; float suly = 1.5; bool lat = false;</span><p>Egész, tört, igaz/hamis változó.</p></div><div class="api"><span class="a">abs / constrain / map</span><span class="t">abs(x); constrain(x, min, max); map(x, 0, 4095, 0, 100)</span><p>Abszolút érték; érték korlátozása tartományba; átskálázás.</p></div><div class="api"><span class="a">String</span><span class="t">String(szam)</span><p>Szám szöveggé — üzenetekhez: uzenet("poz: " + String(poz));</p></div><div class="api"><span class="a">millis</span><span class="t">millis()</span><p>Az indulás óta eltelt ezredmásodpercek — időzítéshez várakozás nélkül.</p></div></div></section>
+<section id="tippek"><h2>Tippek és gyakori hibák</h2>
+<ul>
+<li><b>A vezerles() legyen gyors.</b> Ne tegyél bele <code>varj()</code>-t vagy hosszú ciklust — 20 ms-onként hívódik, és a Stop gomb csak akkor működik, ha visszaadod a vezérlést.</li>
+<li><b>Fehér = nagy, fekete = kicsi.</b> A <code>kuszob</code> a határ: kalibrálás után a Műszerfal megmutatja a jó értéket; a fekete doboz naplója is segít.</li>
+<li><b>Hiányzó pontosvessző / zárójel</b> — a fordító a hibaüzenetben megmondja a sort; kattints rá.</li>
+<li><b>Túl gyors → kirepül a kanyarban:</b> csökkentsd az <code>alapSebesseg</code>-et vagy növeld a korrekciót.</li>
+<li><b>Az egyik kerék lassabb?</b> A Műszerfal „Robot beállítása” dobozában motor-kiegyenlítés (gainL/gainR) állítható — ez a robotban marad.</li>
+<li><b>Akku:</b> 6800 mV alatt a keret letilt — friss elem/töltés; a V parancs mutatja.</li>
+</ul></section>
+</main>
+<script>
+fetch('api.json').then(r=>r.json()).then(d=>{
+  const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+  document.getElementById('fv').innerHTML=d.fuggvenyek.map(f=>`<div class="api"><span class="a">${esc(f.alairas)}</span><p>${esc(f.leiras)}</p>${f.pelda?`<pre>${esc(f.pelda)}</pre>`:''}</div>`).join('');
+  document.getElementById('vt').innerHTML=d.valtozok.map(v=>`<div class="api"><span class="a">${esc(v.tipus)}</span><p>${esc(v.leiras)}</p></div>`).join('');
+  document.getElementById('pc').innerHTML=d.parancsok.map(p=>`<tr><td class="k">${esc(p.nev)}</td><td><code>${esc(p.alairas)}</code></td><td>${esc(p.leiras)}</td></tr>`).join('');
+  document.getElementById('ar').innerHTML=d.arduino.map(a=>`<div class="api"><span class="a">${esc(a.nev)}</span><span class="t">${esc(a.alairas)}</span><p>${esc(a.leiras)}</p></div>`).join('');
+});
+</script>
+</body></html>
