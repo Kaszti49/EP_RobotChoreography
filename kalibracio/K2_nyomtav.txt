@@ -49,11 +49,41 @@ float MM_JOBB     = 0.34056;   // <<<
 //  Robot 1: a jobb enkoder forditva szamol.
 const int ENC_EL[2] = { 1, -1 };   // <<< a K0 altal kiirt ENC_ELOJEL sor
 
+// --------------------- a K3 meresbol ide! ---------------------
+//  IRANYONKENTI holtsav es feed-forward: { elore, hatra } kerekenkent.
+//  EZ A LENYEG: forgatasnal az EGYIK kerek elore megy, a MASIK hatra --
+//  vagyis a ket irany kulonbsege KOZVETLENUL a forgatas pontossagat rontja.
+//  Robot 1-nel a bal kerek hatra 10 %-kal tobb PWM-et kap ugyanahhoz a
+//  sebesseghez, ezert volt szep a jobbra-forgas es kuzdelmes a balra.
+const int   HOLT[2][2] = { {31, 27}, {30, 24} };   // {bal e,h}, {jobb e,h}
+const float KFFV[2][2] = { {0.04130, 0.04575}, {0.04096, 0.04461} };
+
 // --------------------- beallitasok ---------------------
 float NYOMTAV_BECSLES = 153.0;  // kiindulasi nyomtav mm-ben (a segedlet 354 imp / 90 fok adatabol)
 int   FORDULAT_DB     = 5;      // hany teljes kort forduljon
-int   FORGAS_PWM      = 95;     // forgatasi sebesseg (lassu = pontos)
-int   LASSITAS_PWM    = 70;     // az utolso szakaszon ennyire lassit
+
+//  A forgatas most SEBESSEGBEN van megadva, nem PWM-ben: igy mindket kerek
+//  a sajat jelleggorbejevel kapja meg ugyanazt a valodi sebesseget.
+//  1000 imp/s ~ PWM 72 -- a linearis tartomany kozepe, ahol a ket irany
+//  meg alig ter el. (PWM 150 folott a bal kerek hatra latvanyosan beszakad,
+//  ezert ott NEM szabad forgatni.)
+float FORGAS_IMPS   = 1000.0;   // forgatasi sebesseg kerekenkent, imp/s
+float LASSITAS_ARANY = 0.45;    // az utolso szakaszon ennyiszeresere lassit
+float LASSITAS_ARANY_HATAR = 0.08;  // az utolso 8 %-on lassit (haladas-aranyban)
+float KIEGY_G        = 0.30;    // kiegyenlites: imp/s egy impulzusnyi elteresre
+float KIEGY_MAX      = 0.25;    // a korrekcio legfeljebb ennyiszerese a sebessegnek
+
+// --------------------- egy kerek PWM-je ---------------------
+//  Ugyanaz az elv, mint a show-vezerlesben: sajat holtsav + sajat KFF.
+//  impS elojele adja a hajtasi iranyt ES a tablazat-indexet.
+int kerekPWM(float impS, int oldal) {
+  if (impS > -1.0 && impS < 1.0) return 0;
+  int   d   = (impS > 0) ? 0 : 1;
+  float mag = (impS > 0) ? impS : -impS;
+  int   p   = HOLT[oldal][d] + (int)(KFFV[oldal][d] * mag + 0.5);
+  if (p > 200) p = 200;
+  return (impS > 0) ? p : -p;
+}
 
 // --------------------- elojel-ellenorzes ---------------------
 //  Rovid elore-nudge: az ENC_EL alkalmazasa utan MINDKET erteknek pozitivnak
@@ -86,30 +116,123 @@ bool elojelRendben() {
   return true;
 }
 
+//  KEREKENKENTI CELERTEK.
+//    Helyben forgasnal MINDKET kerek ugyanakkora IVET jar be (PI * nyomtav),
+//    de az egy impulzusra juto ut NEM egyforma (MM_BAL != MM_JOBB), ezert az
+//    IMPULZUSSZAM sem az. A regi kod a ket mm/imp ATLAGABOL egyetlen kozos
+//    celt szamolt -- ez robot 1-nel 0,67 % hiba. Kicsi, de ingyen javithato.
+long celBal = 0, celJobb = 0;
+
+//  A ket forgas eredmenye -- a vegen osszehasonlitjuk oket (lasd lent).
+unsigned long forgIdo[2] = { 0, 0 };    // 0 = jobbra, 1 = balra
+long forgVegB[2] = { 0, 0 };
+long forgVegJ[2] = { 0, 0 };
+
 // --------------------- segedfuggveny ---------------------
-// irany: +1 = jobbra (oramutato), -1 = balra.  cel = impulzus kerekenkent
-void forgat(int irany, long cel) {
+// irany: +1 = jobbra (oramutato), -1 = balra.  tarIdx: 0 = jobbra, 1 = balra
+//
+//  MI VALTOZOTT A REGI VALTOZATHOZ KEPEST?
+//    A regi kod mindket keretnek UGYANAZT a PWM-et adta, es egy
+//    korr = (b - j) / 4  taggal probalta kiegyenliteni, +/-25-re vagva.
+//    Az elteres mar 100 impulzusnal telitesbe vitte a korrekciot, es ott is
+//    maradt -- vagyis a szabalyzas gyakorlatilag ket allapot kozott kapcsolt:
+//    az egyik kerek PWM+25-ot, a masik PWM-25-ot kapott. PWM 70-nel ez 95 es
+//    45 -- majdnem haromszoros sebesseg-kulonbseg. A robot nem forgott, hanem
+//    ivet irt le es rangatott. Ez volt a "kuzd a bal kerek" latvany: nem a
+//    motor volt gyenge, hanem a korrekcio kapcsolgatott.
+//
+//  MOST: mindket kerek SEBESSEGET irjuk elo, es a sajat iranyfuggo
+//    jelleggorbejebol szamoljuk a PWM-et. A kiegyenlites aranyos es
+//    korlatozott, nem kapcsolgat.
+void forgat(int irany, int tarIdx) {
   enkoderNullaz();
   varj(150);
 
+  long maxB = 0;
+  unsigned long t0 = millis();
+
   while (true) {
-    long b = encBal  < 0 ? -encBal  : encBal;
-    long j = encJobb < 0 ? -encJobb : encJobb;
-    long atlag = (b + j) / 2;
-    if (atlag >= cel) break;
+    long eb = encBal  * ENC_EL[0];
+    long ej = encJobb * ENC_EL[1];
+    long b = eb < 0 ? -eb : eb;
+    long j = ej < 0 ? -ej : ej;
 
-    // a ket kerek kiegyenlitese: amelyik elore szaladt, az lassul
-    int korr = (int)((b - j) / 4);
-    if (korr >  25) korr =  25;
-    if (korr < -25) korr = -25;
+    // haladas: mindket kerek a SAJAT celjahoz merve, 0..1
+    float haladas = ((float)b / (float)celBal + (float)j / (float)celJobb) / 2.0;
+    if (haladas >= 1.0) break;
 
-    int pwm = (atlag > cel - 400) ? LASSITAS_PWM : FORGAS_PWM;   // vegen lassit
-    motor(irany * (pwm - korr), -irany * (pwm + korr));
+    float seb = FORGAS_IMPS;
+    if (haladas > 1.0 - LASSITAS_ARANY_HATAR) seb = FORGAS_IMPS * LASSITAS_ARANY;
+
+    // kiegyenlites: amelyik kerek LEMARADT, az kap tobbet (aranyosan)
+    float korr = (float)(j - b) * KIEGY_G;
+    float hat  = seb * KIEGY_MAX;
+    if (korr >  hat) korr =  hat;
+    if (korr < -hat) korr = -hat;
+
+    long d = b - j; if (d < 0) d = -d;
+    if (d > maxB) maxB = d;
+
+    // forgatas: a bal kerek +irany, a jobb -irany
+    motor(kerekPWM( (float)irany * (seb + korr), 0),
+          kerekPWM(-(float)irany * (seb - korr), 1));
     varj(10);
   }
 
+  unsigned long ido = millis() - t0;
   motor(0, 0);
   varj(1200);   // hagyjuk teljesen megallni, mielott olvasunk
+
+  long eb = encBal * ENC_EL[0], ej = encJobb * ENC_EL[1];
+  if (eb < 0) eb = -eb;
+  if (ej < 0) ej = -ej;
+
+  forgIdo[tarIdx]  = ido;
+  forgVegB[tarIdx] = eb;
+  forgVegJ[tarIdx] = ej;
+
+  uzenet("  vegen: bal=" + String(eb) + " jobb=" + String(ej)
+         + "  ido=" + String(ido) + " ms"
+         + "  (legnagyobb elteres menet kozben: " + String(maxB) + " imp)");
+  if (maxB > 300)
+    uzenet("  FIGYELEM: nagy elteres a ket kerek kozott -- nezd meg a K3 iranyonkenti adatait.");
+}
+
+// --------------------- FORGAS-DIAGNOSZTIKA ---------------------
+//  MIERT KELL EZ KULON?
+//    A K3 EGYENES menetben meri a kerekeket: mindketto ugyanabba az iranyba
+//    hajt. Forgasnal viszont az EGYIK elore, a MASIK hatra megy -- mas a
+//    terheles, mas a tapadas, mas az akku-terheles. Ezert a K3 szamai nem
+//    feltetlenul ervenyesek forgas kozben.
+//    Ez a reszlet MEGMERI, mit tud a ket kerek FORGAS kozben, mindket
+//    iranyban. Ha a ket irany itt jelentosen elter, akkor a szamokkal a
+//    kezedben tudsz donteni hardver-javitasrol -- nem talalgatas alapjan.
+void forgasDiag(int irany, String nev) {
+  enkoderNullaz();
+  varj(200);
+
+  // 400 ms felfutas, aztan 600 ms merooblak
+  motor(kerekPWM( (float)irany * FORGAS_IMPS, 0),
+        kerekPWM(-(float)irany * FORGAS_IMPS, 1));
+  varj(400);
+
+  long b0 = encBal * ENC_EL[0], j0 = encJobb * ENC_EL[1];
+  unsigned long t0 = millis();
+  varj(600);
+  unsigned long dt = millis() - t0;
+  long db = encBal * ENC_EL[0] - b0, dj = encJobb * ENC_EL[1] - j0;
+
+  motor(0, 0);
+  varj(800);
+
+  if (db < 0) db = -db;
+  if (dj < 0) dj = -dj;
+  float sB = (float)db * 1000.0 / (float)dt;
+  float sJ = (float)dj * 1000.0 / (float)dt;
+  float elt = (sB > sJ) ? (1.0 - sJ / sB) * 100.0 : (1.0 - sB / sJ) * 100.0;
+
+  uzenet("  " + nev + ": bal " + String(sB, 0) + " imp/s, jobb " + String(sJ, 0)
+         + " imp/s  (kert: " + String(FORGAS_IMPS, 0) + ", elteres " + String(elt, 1) + " %)");
 }
 
 void indulas() {
@@ -120,11 +243,17 @@ void indulas() {
   long celEgyKor = (long)(3.14159265 * NYOMTAV_BECSLES / mmAtlag);
   long cel = celEgyKor * FORDULAT_DB;
 
+  // KEREKENKENTI cel: ugyanaz az iv, de sajat mm/imp-pel szamolva.
+  celBal  = (long)(3.14159265 * NYOMTAV_BECSLES / MM_BAL  * FORDULAT_DB);
+  celJobb = (long)(3.14159265 * NYOMTAV_BECSLES / MM_JOBB * FORDULAT_DB);
+
   uzenet("K2 -- nyomtav-meres. Becsles: " + String(NYOMTAV_BECSLES, 1) + " mm");
   uzenet("mm/imp: bal=" + String(MM_BAL, 5) + " jobb=" + String(MM_JOBB, 5)
          + " -- EZ A K1 EREDMENYE LEGYEN!");
   uzenet("Egy teljes kor = " + String(celEgyKor) + " impulzus/kerek, osszesen "
          + String(cel) + " (" + String(FORDULAT_DB) + " kor).");
+  uzenet("Kerekenkenti cel: bal=" + String(celBal) + "  jobb=" + String(celJobb)
+         + " impulzus (a ket mm/imp elter, ezert a ket cel is)");
 
   // Ha a mm/imp nagysagrendje rossz, a kort rossz impulzusszamra szamoljuk,
   // es a robot lathatoan nem annyit fordul, amennyit kertunk.
@@ -140,12 +269,23 @@ void indulas() {
 
   if (!elojelRendben()) return;
 
+  // --- forgas-diagnosztika: ez meri, mit tud a ket kerek FORGAS kozben ---
+  uzenet("--- forgas-diagnosztika (2 x kb. 2 mp, kis elmozdulas) ---");
+  forgasDiag(+1, "JOBBRA");
+  varj(600);
+  forgasDiag(-1, "BALRA ");
+  uzenet("  Ha a ket sor kozott nagy a kulonbseg, a hiba FORGAS-specifikus.");
+  uzenet("  Ha mindket sor egyforma, de a K3 aszimmetriat mutatott, akkor a");
+  uzenet("  kulonbseg csak nagy PWM-en jelentkezik -- a show-t az nem erinti.");
+  uzenet("--------------------------------------------------------");
+  varj(1500);
+
   uzenet("Indulas 3 mp mulva...");
   varj(3000);
 
   // ---------- 1. JOBBRA ----------
   uzenet("Forgas JOBBRA...");
-  forgat(+1, cel);
+  forgat(+1, 0);
   uzenet("=== JOBBRA kesz. Olvasd le a szoget! ===");
   uzenet("Ha TULFORDULT (a nyil tullepett a jelen): a delta POZITIV.");
   uzenet("Ha nem ert oda: a delta NEGATIV.");
@@ -155,8 +295,47 @@ void indulas() {
 
   // ---------- 2. BALRA ----------
   uzenet("Forgas BALRA...");
-  forgat(-1, cel);
+  forgat(-1, 1);
   uzenet("=== BALRA kesz. Olvasd le ezt a szoget is! ===");
+
+  // ============ A KET FORGAS OSSZEHASONLITASA ============
+  //  EZ A LEGFONTOSABB DIAGNOSZTIKA. Ha a ket irany nem szimmetrikus,
+  //  ez megmondja, MI okozza -- es kulonosen: az ENKODERT is gyanuba veszi.
+  //
+  //  MIERT? Mert a K3 a sebesseget AZ ENKODERREL meri. Ha egy enkoder az
+  //  egyik iranyban impulzusokat ejt, az PONTOSAN ugy nez ki, mintha a motor
+  //  lenne lassabb abban az iranyban -- a K3 a kettot nem tudja szetvalasztani.
+  //  A kulonbseg viszont ITT megfoghato: ha az enkoder kevesebbet szamol, a
+  //  ciklus KESOBB all le, tehat a robot TOVABB forog es TULFORDUL.
+  uzenet("=========== A KET FORGAS OSSZEHASONLITASA ===========");
+  uzenet("  JOBBRA: " + String(forgIdo[0]) + " ms, bal=" + String(forgVegB[0])
+         + " jobb=" + String(forgVegJ[0]));
+  uzenet("  BALRA : " + String(forgIdo[1]) + " ms, bal=" + String(forgVegB[1])
+         + " jobb=" + String(forgVegJ[1]));
+
+  if (forgIdo[0] > 0 && forgIdo[1] > 0) {
+    float idoArany = (float)forgIdo[1] / (float)forgIdo[0];
+    uzenet("  ido-arany (balra/jobbra) = " + String(idoArany, 2));
+
+    if (idoArany > 1.10 || idoArany < 0.91) {
+      uzenet("  !!! A KET IRANY NEM SZIMMETRIKUS.");
+      uzenet("  MERD MEG SZALAGGAL, hany fordulatot tett meg a robot MINDKET iranyban!");
+      uzenet("  Ha a lassabb iranyban TOBBET is fordult a kertnel (TULFORDULT):");
+      uzenet("     -> az ENKODER ejt impulzusokat abban az iranyban. A ciklus azert");
+      uzenet("        fut tovabb, mert kevesebbet szamol, mint amennyi tenyleg megvan.");
+      uzenet("        Ez EGYUTT jar azzal, hogy az aramfelvetel a ket iranyban EGYEZIK");
+      uzenet("        (a motor jo, csak a szamlalas rossz).");
+      uzenet("     -> TESZT: a K1-gyel told vegig a robotot MOTOR NELKUL ugyanakkora");
+      uzenet("        utat elore es hatra. Ha hatra kevesebb impulzus jon, bizonyitva.");
+      uzenet("  Ha a lassabb iranyban PONTOSAN annyit fordult (nem tulforgott):");
+      uzenet("     -> tenyleg a motor/hajtomu gyengebb abban az iranyban.");
+      uzenet("        Ilyenkor viszont TOBB aramot venne fel -- ha az aram egyezik,");
+      uzenet("        ez a magyarazat nem all.");
+    } else {
+      uzenet("  A ket irany szimmetrikus (10 %-on belul).");
+    }
+  }
+  uzenet("=====================================================");
 
   uzenet("=========== K2 KIERTEKELES ===========");
   uzenet("1) Szamold ki mindket iranyra:  uj = regi * " + String(360 * FORDULAT_DB)
