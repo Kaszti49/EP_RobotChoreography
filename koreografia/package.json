@@ -1,0 +1,14 @@
+{
+  "name": "koreografia",
+  "version": "0.1.0",
+  "description": "Choreography compiler and simulator for five blind differential-drive robots",
+  "type": "module",
+  "private": true,
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "test": "node --test",
+    "build": "node tools/build.js data/example-show.json out",
+    "template": "node tools/make-template.js",
+    "serve": "node tools/serve.js"
+  }
+}

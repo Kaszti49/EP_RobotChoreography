@@ -1,0 +1,74 @@
+Vonalkövető robot — lábbekötési táblázat
+ESP32 DevKit 38 láb · keret 2.0 (2026-08-24) · A Láb oszlop a mi paneleink feliratát adja (G-előtag, a két
+felső analóg láb SP/SN, a táp V5). Ha egy panelen más felirat van (D16, RX2), a GPIO-szám a döntő — a
+keret azzal dolgozik.
+1. Vonalkövető szenzorsor — TSM-5 (OUT1…OUT5, balról jobbra)
+Szenzor Láb (panel felirat) GPIO Megjegyzés
+OUT1 — bal
+szélső SP  (más panelen VP / D36) GPIO36 csak bemenet
+OUT2 — bal SN  (más panelen VN / D39) GPIO39 csak bemenet
+OUT3 — közép G34 GPIO34 csak bemenet
+OUT4 — jobb G35 GPIO35 csak bemenet
+OUT5 — jobb
+szélső G32 GPIO32
+TSM-5 táp
+(„5V” láb) 3V3 —
+3,3 V-ról hajtjuk — így a kimenete
+sem megy 3,3 V fölé
+TSM-5 GND GND — közös föld
+Mind az öt láb ADC1-es: Bluetooth mellett is mér. A fehér felület nagy értéket, a fekete vonal kicsit ad.
+2. Motorvezérlő (TB6612FNG)
+Vezérlő láb ESP32 láb (felirat) GPIO Mit csinál
+PWMA G16  (D16 / RX2) GPIO16 bal motor sebesség
+AIN1 G17  (D17 / TX2) GPIO17 bal motor irány 1
+AIN2 G5 GPIO5 bal motor irány 2
+PWMB G4 GPIO4 jobb motor sebesség
+BIN1 G18 GPIO18 jobb motor irány 1
+BIN2 G19 GPIO19 jobb motor irány 2
+STBY G23 GPIO23 engedélyezés (LOW = motorok állnak)
+VCC (logika) 3V3 — 3,3 V
+VM (motor táp) akku + — közvetlenül az akkuról
+GND GND — közös föld (ESP32 + akku + vezérlő)
+AO1 / AO2 bal motor — a bal motor két vezetéke
+BO1 / BO2 jobb motor — a jobb motor két vezetéke
+3. Enkóderek (motorokon)
+Jel
+ESP32 láb
+(felirat)
+GPIO Megjegyzés
+Bal enkóder A G25 GPIO25
+408 impulzus / kerékfordulat
+Bal enkóder B G26 GPIO26
+Jobb enkóder A G27 GPIO27 a jobb enkóder előjele fordított (a keret
+kezeli) Jobb enkóder B G14 GPIO14
+Enkóder VCC /
+GND 3V3 / GND —
+4. Akkufeszültség-mérő (voltage sensor modul, 5:1)
+Modul láb ESP32 láb (felirat) GPIO Megjegyzés
+S (jel) G33 GPIO33 az egyetlen szabad ADC1-es láb
+− (mínusz) GND —
++ (plusz) — — bekötetlen marad
+VCC / GND (bemenet) akku + / − — a modul csavaros sorkapcsa
+Ha nincs bekötve, a telemetriában az akku 0 mV-ot mutat — a robot ettől még működik.
+5. Tápellátás
+Honnan Hova Megjegyzés
+Logikai
+elemcsomag + V5 (ESP32 „5V” lába)
+a segédlet szerint 6 V — ez
+hajtja az ESP32-t, a TSM-5-öt és
+az enkódereket
+Motor-akku + VM (TB6612) és a mérőmodul bemenete
+7 cellás AA pakk (a keret 6,8 V
+alatt letiltja a motorokat, 7,4 V
+alatt figyelmeztet)
+Mindkét akku − GND egy ponton találkozik a logikai
+és a motoros föld
+Figyelem: a föld (GND) közös legyen az ESP32, a TB6612, a TSM-5 és mindkét elemcsomag között —
+enélkül a szenzorok „bolondoznak”. A motor tápot (VM) soha ne a 3V3 lábról vedd. Az USB-t és az
+elemcsomagot ne kösd rá egyszerre a VIN-re.
+Ellenőrizd a te robotodon: a segédlet két külön elemcsomagot ír (logikai 6 V a VIN-re + motor-pakk a
+VM-re). Ha nálad egyetlen pakk hajt mindent, akkor az megy a VIN-re és a VM-re is — a keret ettől még
+ugyanígy működik.
+Ellenőrzés bekötés után: a Fejlesztés lapon Csatlakozás → a Műszerfalon az öt szenzor értéke változzon, ha
+fehér/fekete fölé viszed; Kalibrálás → told át a robotot a vonalon; a kézi vezérlésnél a bal/jobb motor a helyes
+irányba forduljon (ha nem, a két motorvezeték cserélendő).

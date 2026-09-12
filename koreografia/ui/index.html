@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="hu">
+<head>
+<meta charset="utf-8">
+<title>Koreográfia</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --bg: #0d1117; --panel: #161b22; --panel2: #1c2129; --ink: #e6edf3; --muted: #8b949e; --line: #30363d;
+    --err: #f85149; --warn: #d29922; --ok: #3fb950; --accent: #2f81f7; --danger: #da3633; --success: #238636;
+    --canvas: #ffffff;
+    --s1: #f85149; --s2: #e58a00; --s3: #3fb950; --s4: #58a6ff; --s5: #bc8cff;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; font: 13px/1.4 system-ui, sans-serif; color: var(--ink); background: var(--bg); display: flex; flex-direction: column; }
+  a { color: var(--accent); }
+  header { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 8px 12px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 15px; margin: 0 8px 0 0; }
+  header .status { margin-left: auto; color: var(--muted); }
+  .status.ok { color: var(--ok); } .status.error { color: var(--err); } .status.warning { color: var(--warn); }
+  .pill { font: 12px ui-monospace, monospace; padding: 3px 8px; border-radius: 4px; background: var(--panel2); border: 1px solid var(--line); color: var(--muted); }
+  .pill.on { color: var(--ok); border-color: var(--ok); }
+  button, input, select, textarea { font: inherit; color: var(--ink); }
+  button { padding: 5px 11px; border: 1px solid var(--line); background: var(--panel2); border-radius: 6px; cursor: pointer; white-space: nowrap; }
+  button:hover { background: #262c36; }
+  button:disabled { opacity: .45; cursor: default; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary:hover { background: #1f6feb; }
+  button.danger { background: var(--danger); border-color: var(--danger); color: #fff; }
+  button.success { background: var(--success); border-color: var(--success); color: #fff; }
+  button kbd { font: 10px ui-monospace, monospace; background: rgba(0,0,0,.35); padding: 1px 4px; border-radius: 3px; margin-left: 4px; }
+  select, input[type=text], input[type=file] { background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; }
+  input[type=file] { color: var(--muted); }
+  .muted { color: var(--muted); }
+  small { color: var(--muted); }
+  .spacer { flex: 1; }
+  .row, .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .toolbar { padding: 8px 12px; }
+
+  /* tabs */
+  nav.tabs { display: flex; gap: 2px; padding: 0 12px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  nav.tabs button { border: 1px solid transparent; border-bottom: none; background: transparent; color: var(--muted); border-radius: 6px 6px 0 0; padding: 7px 14px; margin-bottom: -1px; }
+  nav.tabs button:hover { color: var(--ink); }
+  nav.tabs button.active { background: var(--bg); color: var(--ink); border-color: var(--line); font-weight: 600; }
+  main { flex: 1; min-height: 0; }
+  .tab { display: none; height: 100%; }
+  .tab.active { display: block; }
+
+  /* ---- choreography tab ---- */
+  #tab-koreo { display: none; grid-template-columns: 1fr 380px; grid-template-rows: auto 1fr auto; gap: 8px; padding: 8px; }
+  #tab-koreo.active { display: grid; }
+  #koreoBar { grid-column: 1 / span 2; }
+  #fieldPane { grid-column: 1; grid-row: 2; background: var(--canvas); border: 1px solid var(--line); border-radius: 6px; position: relative; min-height: 300px; }
+  #field { width: 100%; height: 100%; display: block; }
+  #side { grid-column: 2; grid-row: 2 / span 2; overflow: auto; display: flex; flex-direction: column; gap: 8px; }
+  #timelinePane { grid-column: 1; grid-row: 3; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+  #timeline { width: 100%; height: 150px; display: block; cursor: pointer; background: var(--canvas); border-radius: 4px; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; }
+  .panel h2 { font-size: 12px; margin: 0 0 6px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .controls { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 4px; }
+  .controls input[type=range] { flex: 1; min-width: 120px; }
+  #findings { list-style: none; margin: 0; padding: 0; }
+  #findings li { padding: 5px 6px; border-left: 3px solid var(--line); margin-bottom: 4px; cursor: pointer; background: var(--panel2); }
+  #findings li.error { border-color: var(--err); }
+  #findings li.warning { border-color: var(--warn); }
+  #findings li:hover { background: #262c36; }
+  #findings .tag { font-weight: 600; margin-right: 4px; }
+  .error .tag { color: var(--err); } .warning .tag { color: var(--warn); }
+  .ok { color: var(--ok); font-weight: 600; }
+  textarea { width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; }
+  #json { height: 220px; font: 11px/1.3 ui-monospace, monospace; }
+  table { border-collapse: collapse; width: 100%; }
+  td, th { text-align: left; padding: 2px 4px; border-bottom: 1px solid var(--line); font-size: 12px; }
+  th { color: var(--muted); font-weight: 500; }
+  .swatch { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+  /* ---- code tab ---- */
+  #tab-kod { display: none; flex-direction: column; gap: 6px; padding: 0 8px 8px; }
+  #tab-kod.active { display: flex; }
+  #tab-kod .toolbar { padding: 8px 0 2px; }
+  .editor { flex: 1; min-height: 200px; display: flex; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+  .editor pre { margin: 0; padding: 8px 6px; width: 46px; text-align: right; color: var(--muted); background: var(--panel); border-right: 1px solid var(--line); font: 12px/1.45 ui-monospace, monospace; overflow: hidden; user-select: none; }
+  .editor pre span.err { color: var(--err); font-weight: 700; }
+  .editor textarea { flex: 1; border: none; border-radius: 0; resize: none; padding: 8px 10px; font: 12px/1.45 ui-monospace, monospace; white-space: pre; overflow: auto; outline: none; tab-size: 2; }
+  .console { font: 12px/1.45 ui-monospace, monospace; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; white-space: pre-wrap; overflow: auto; }
+  #codeOut { min-height: 64px; max-height: 30vh; }
+  #codeOut .diag { display: block; }
+  #codeOut .diag.error { color: var(--err); } #codeOut .diag.warning { color: var(--warn); } #codeOut .diag.note { color: var(--muted); }
+  #codeOut .diag a { cursor: pointer; text-decoration: underline; color: inherit; font-weight: 600; }
+  #codeOut .ok { color: var(--ok); }
+  #helpPanel { position: fixed; top: 0; right: 0; bottom: 0; width: min(560px, 90vw); background: var(--panel); border-left: 1px solid var(--line); box-shadow: -8px 0 24px rgba(0,0,0,.5); z-index: 10; display: flex; flex-direction: column; }
+  #helpPanel[hidden] { display: none; }
+  #helpPanel .row { padding: 8px 12px; border-bottom: 1px solid var(--line); }
+  #helpText { flex: 1; overflow: auto; margin: 0; padding: 12px; white-space: pre-wrap; font: 12px/1.5 ui-monospace, monospace; }
+  progress { width: 160px; accent-color: var(--accent); }
+
+  /* ---- dashboard tab ---- */
+  #tab-muszerfal { display: none; flex-direction: column; gap: 8px; padding: 0 8px 8px; }
+  #tab-muszerfal.active { display: flex; }
+  #tab-muszerfal .toolbar { padding: 8px 0 0; }
+  .dash-grid { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 460px; gap: 8px; }
+  .charts { display: flex; flex-direction: column; gap: 4px; min-height: 0; }
+  .chart-pane { flex: 1; min-height: 120px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; position: relative; }
+  .chart-pane canvas { width: 100%; height: 100%; display: block; }
+  .dash-side { display: flex; flex-direction: column; gap: 8px; min-height: 0; }
+  #dashTable td { font: 12px ui-monospace, monospace; padding: 3px 6px; }
+  #dashTable td:first-child { color: var(--muted); }
+  #dashTable td:last-child { text-align: right; }
+  .drive { display: flex; gap: 14px; align-items: center; }
+  .dpad { display: grid; grid-template-columns: repeat(3, 44px); grid-template-rows: repeat(2, 40px); gap: 4px; user-select: none; }
+  .dpad button { font-size: 18px; padding: 0; touch-action: none; }
+  .dpad button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  #dashLog { flex: 1; min-height: 120px; }
+  details summary { cursor: pointer; color: var(--muted); }
+  details .row { margin-top: 8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🤖 Koreográfia</h1>
+  <span class="pill" id="connState">nincs kapcsolat</span>
+  <label class="muted">Robot <select id="robotSel"></select></label>
+  <button id="btnConnect" class="primary">Csatlakozás</button>
+  <button id="btnStopAll" class="danger" title="S minden csatlakoztatott robotnak">■ STOP</button>
+  <span class="status" id="status">—</span>
+</header>
+<nav class="tabs">
+  <button class="active" data-tab="koreo">Koreográfia</button>
+  <button data-tab="kod">Kód</button>
+  <button data-tab="muszerfal">Műszerfal</button>
+</nav>
+<main>
+
+  <!-- ================= KOREOGRÁFIA ================= -->
+  <section id="tab-koreo" class="tab active">
+    <div id="koreoBar" class="row">
+      <input type="file" id="fileInput" accept=".json,application/json" title="show JSON betöltése">
+      <button id="btnExample">Példa betöltése</button>
+      <button id="btnSave">JSON mentése</button>
+      <button id="btnEmit">Arduino .txt letöltése</button>
+      <button id="btnToCode" title="A kiválasztott robot kódja a Kód fülre">→ Kód fülre</button>
+    </div>
+    <div id="fieldPane"><canvas id="field"></canvas></div>
+    <div id="timelinePane">
+      <div class="controls">
+        <button id="btnPlay">▶ Lejátszás</button>
+        <button id="btnStop">■ Elejére</button>
+        <label>Sebesség <select id="speed"><option value="1">1×</option><option value="2">2×</option><option value="4" selected>4×</option><option value="8">8×</option></select></label>
+        <input type="range" id="scrub" min="0" max="1000" value="0">
+        <span id="timeLabel">0.0 s</span>
+      </div>
+      <canvas id="timeline"></canvas>
+    </div>
+    <aside id="side">
+      <section class="panel">
+        <h2>Ellenőrzés</h2>
+        <div id="summary" class="muted">nincs show betöltve</div>
+        <ul id="findings"></ul>
+      </section>
+      <section class="panel">
+        <h2>Ütemek</h2>
+        <table id="beats"><thead><tr><th>#</th><th>név</th><th>ms</th><th>leglassabb</th></tr></thead><tbody></tbody></table>
+      </section>
+      <section class="panel">
+        <h2>Show JSON</h2>
+        <textarea id="json" spellcheck="false"></textarea>
+        <div class="controls"><button id="btnApply">Alkalmaz</button><small>szerkeszd, majd Alkalmaz — vagy tölts be fájlt fent</small></div>
+      </section>
+    </aside>
+  </section>
+
+  <!-- ================= KÓD ================= -->
+  <section id="tab-kod" class="tab">
+    <div class="toolbar">
+      <label class="muted">Példa: <select id="codeExample"><option value="">— válassz —</option></select></label>
+      <button id="btnCodeSave">💾 Mentés</button>
+      <button id="btnCodeLoad">📂 Betöltés</button>
+      <input type="file" id="codeFile" accept=".ino,.txt,.cpp,.c,.h" hidden>
+      <span class="spacer"></span>
+      <button id="btnCompile">Fordít<kbd>Ctrl+S</kbd></button>
+      <button id="btnUpload" disabled>Feltölt a robotra</button>
+      <button id="btnCompileUpload" class="primary">Fordít + Feltölt<kbd>Ctrl+Enter</kbd></button>
+      <button id="btnHelp">📘 Segédlet</button>
+    </div>
+    <div class="editor">
+      <pre id="gutter" aria-hidden="true">1</pre>
+      <textarea id="code" spellcheck="false" wrap="off" placeholder="void indulas() { ... }&#10;void vezerles() { ... }"></textarea>
+    </div>
+    <div id="codeOut" class="console">Írd meg a kódot, majd Fordít + Feltölt. A hibaüzenetek ide jönnek, a sorszámra kattintva odaugrik a kurzor.</div>
+    <div class="row">
+      <b>USB-telepítés</b>
+      <small>első alkalommal (a tábori keretet a Bluetooth-feltöltés nem tudja lecserélni): USB-kábel a robotba, Fordít, aztán</small>
+      <select id="usbPort"><option value="">— port —</option></select>
+      <button id="btnPorts" title="portok újraolvasása">⟳</button>
+      <button id="btnUsb" disabled>USB-telepítés</button>
+      <small id="usbHint" style="color:var(--warn)"></small>
+      <span class="spacer"></span>
+      <small>Kész .bin Bluetooth-on:</small>
+      <input type="file" id="fwFile" accept=".bin">
+      <button id="btnOta">Feltöltés</button>
+      <progress id="otaProgress" max="100" value="0" hidden></progress>
+      <span id="otaStatus" class="muted"></span>
+    </div>
+    <div id="helpPanel" hidden>
+      <div class="row"><b>Segédlet</b><span class="spacer"></span><button id="btnHelpClose">Bezár</button></div>
+      <pre id="helpText">betöltés…</pre>
+    </div>
+  </section>
+
+  <!-- ================= MŰSZERFAL ================= -->
+  <section id="tab-muszerfal" class="tab">
+    <div class="toolbar">
+      <button id="dashStart" class="success">▶ Start (a kódod)</button>
+      <button id="dashStop" class="danger">■ Stop</button>
+      <span class="muted">mód: <span id="dashMode">–</span></span>
+      <span class="spacer"></span>
+      <button id="dashEncZero" title="Z">Enkóder nulla</button>
+      <button id="dashCal" title="K">Szenzor-kalibrálás (3 s)</button>
+    </div>
+    <div class="panel">
+      <div class="row"><b>Robot beállítása (minden robot más!)</b><span class="spacer"></span><small>Első alkalommal futtasd le mindkettőt.</small></div>
+      <div class="row" style="margin-top:6px">
+        <button id="dashEncAuto" title="N,AUTO">1. Enkóder-irány felismerése</button>
+        <button id="dashWheel" title="H">2. Kerék-mérés indítása</button>
+        <button id="dashOneRev" title="G,408,408,120 — mindkét kerék pontosan egy fordulat (138,9 mm)">3. Egy kerékfordulat (408 imp)</button>
+        <span id="dashSetupOut" class="muted"></span>
+      </div>
+      <details>
+        <summary>Kézi beállítás (ha az automatika nem jó, vagy az egyik motor gyengébb)</summary>
+        <div class="row">
+          <label>enkóder bal <select id="signEncL"><option value="1">+1</option><option value="-1">−1</option></select></label>
+          <label>enkóder jobb <select id="signEncR"><option value="1">+1</option><option value="-1">−1</option></select></label>
+          <label>motor bal <select id="signMotL"><option value="1">+1</option><option value="-1">−1</option></select></label>
+          <label>motor jobb <select id="signMotR"><option value="1">+1</option><option value="-1">−1</option></select></label>
+          <button id="dashSignQuery" title="N">Lekérdez</button>
+          <button id="dashSignSave" title="N,encL,encR,motL,motR">Mentés a robotra</button>
+        </div>
+      </details>
+    </div>
+    <div class="dash-grid">
+      <div class="charts">
+        <div class="chart-pane"><canvas id="chartSensors"></canvas></div>
+        <small>szenzorok 0–4095 (fehér = nagy). Színek: S1 piros, S2 narancs, S3 zöld, S4 kék, S5 lila. Szaggatott: vonalpozíció.</small>
+        <div class="chart-pane"><canvas id="chartPwm"></canvas></div>
+        <small>motor PWM: bal kék, jobb piros (−255…255)</small>
+      </div>
+      <div class="dash-side">
+        <table id="dashTable">
+          <tr><td>S1…S5</td><td data-k="sensors">–</td></tr>
+          <tr><td>enkóder bal / jobb</td><td data-k="enc">–</td></tr>
+          <tr><td>megtett út bal / jobb</td><td data-k="mm" title="robots.json MM_PER_IMP × impulzus">–</td></tr>
+          <tr><td>PWM bal / jobb</td><td data-k="pwm">–</td></tr>
+          <tr><td>vonalpozíció</td><td data-k="pos">–</td></tr>
+          <tr><td>akku</td><td data-k="akku">–</td></tr>
+          <tr><td>kalibráció fehér</td><td data-k="calW">–</td></tr>
+          <tr><td>kalibráció fekete</td><td data-k="calB">–</td></tr>
+        </table>
+        <div class="drive">
+          <div class="dpad">
+            <span></span><button data-drive="fwd" title="előre (fel nyíl)">↑</button><span></span>
+            <button data-drive="left" title="balra pörög (bal nyíl)">↺</button><button data-drive="back" title="hátra (le nyíl)">↓</button><button data-drive="right" title="jobbra pörög (jobb nyíl)">↻</button>
+          </div>
+          <div>
+            <div class="muted">kézi vezérlés (nyomva tartva)</div>
+            <label class="muted">PWM <input type="range" id="drivePwm" min="50" max="255" value="90" style="width:120px;vertical-align:middle"> <span id="drivePwmLabel">90</span></label>
+            <div><small>A billentyűzet nyilai is működnek. Elengedve M,0,0.</small></div>
+          </div>
+        </div>
+        <div id="dashLog" class="console"></div>
+        <div class="row">
+          <input type="text" id="rawCmd" placeholder="nyers parancs, pl. P vagy M,80,80" style="flex:1">
+          <button id="btnRaw">Küld</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+<script type="module" src="app.js"></script>
+</body>
+</html>

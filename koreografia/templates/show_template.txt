@@ -1,0 +1,283 @@
+// =====================================================================
+//  SHOW -- ROBOT @@ROBOT@@   (v5)
+//  Enkoderes koreografia vonal nelkul, kerekenkent szinkronizalva.
+//
+//  EZ A FAJL KET RESZBOL ALL:
+//    2. blokk  = PER ROBOT mert adatok   -> robotonkent MAS
+//    3. blokk  = KOZOS show-beallitasok  -> mind az ot roboton UGYANAZ
+//  A tobbihez nem kell nyulni.
+// =====================================================================
+//
+// ---------------------------------------------------------------------
+//  A. HOGYAN MUKODIK
+// ---------------------------------------------------------------------
+//  Nincs vonal, tehat nincs kulso visszacsatolas. Ami maradt: a ket
+//  enkoder. Minden mozgas egy impulzus-cel kerekenkent, es a mozgas()
+//  ciklus 10 ms-onkent ujraszamolja a ket PWM-et.
+//
+//  SZINKRON (a lenyeg): a ciklus nem a megtett impulzust nezi, hanem
+//  hogy a ket kerek hany SZAZALEKAN all a SAJAT celjanak. Amelyik siet,
+//  kevesebb PWM-et kap, amelyik lemarad, tobbet. Igy a ket kerek EGYUTT
+//  erkezik. Ez azert kritikus, mert ha az egyiket elobb allitanank le,
+//  a masik kerek meg hajt, es a robot forgasa a leallitott kereket
+//  tovabb pergeti -- szabadon gurul, es 400-500 impulzust osszeszed.
+//  (Ezt ki is probaltuk: a "mindenki menjen a sajat celjaig, aztan
+//  alljon meg" valtozat pont ettol nem javitott semmit.)
+//
+//  AKTIV FEK: a cel utan rovid ellen-impulzus. A puszta motor(0,0) a
+//  TB6612-n csak szabadon gurulas, nem fekezes -- enelkul az egyenes is
+//  2-4 %-ot tulfutott.
+//
+// ---------------------------------------------------------------------
+//  B. SEBESSEG -- EGY SZAM, MIND AZ OT ROBOTRA
+// ---------------------------------------------------------------------
+//  A PWM robotonkent MAST jelent (mas motor, mas surlodas, mas akku).
+//  Ezert a koreografia nem PWM-ben, hanem mm/s-ban all: SEBESSEG_MM_S.
+//  Minden robot a SAJAT mert PWM/sebesseg egyenesevel szamolja at:
+//
+//        PWM = PWM_PER_MMS * v + PWM_NULLA
+//
+//  Igy eleg EGY helyen allitani a sebesseget, es mind az ot ugyanolyan
+//  gyorsan megy. A ket atvalto szamot a T7_sebesseg.txt meri robotonkent.
+//
+// ---------------------------------------------------------------------
+//  C. A NAPLOT IGY OLVASD -- FONTOS
+// ---------------------------------------------------------------------
+//  Porgesben az elore halado kerek 3-11 %-kal TULFUTJA a celt a naplo
+//  szerint, a robot megis a helyes szoget fordul. Ez nem hiba: az a
+//  kerek CSUSZIK. Az enkoder szamolja az elfordulast, de a robotot nem
+//  forgatja tovabb. NE a naplo szazalekait hangold, hanem azt, amit a
+//  padlon latsz.
+//  Ugyanezert lett a NYOMTAV_MM 143 a fizikailag mert 148 helyett: a
+//  hangolt szam a csuszast is magaba nyeli.
+//
+// ---------------------------------------------------------------------
+//  D. AMI NEM JAVITHATO TOVABB
+// ---------------------------------------------------------------------
+//  Csuszas: a kerek elfordul, a robot megsem oda megy. Az enkoder ezt
+//  elvileg sem latja. Nagysagrend: +-10 cm meterenkent, +-20 fok harom
+//  porges utan, padlofuggoen. Ne tervezz 20 cm-nel kisebb hezagot ket
+//  robot koze, es ne fuzz sok porgest egymas utan -- kulso referencia
+//  nelkul a szoghiba osszeadodik.
+//
+//  Ha a robot ugyanazzal a kodddal futasrol futasra rosszabb lesz:
+//  eloszor az AKKUT merd (V parancs), ne a szamokat allitsd.
+// =====================================================================
+
+
+// ============ 1. MELYIK ROBOT VAGYOK ============
+
+#define ROBOT @@ROBOT@@
+
+
+// =====================================================================
+//  2. PER ROBOT MERT ADATOK  --  ROBOTONKENT MAS
+//     (a MERESI_MENET.md tablazatabol)
+// =====================================================================
+
+// --- T1 tolasi teszt + T5 hajtott egyenes ---
+const float MM_PER_IMP_BAL  = @@MM_PER_IMP_BAL@@;
+const float MM_PER_IMP_JOBB = @@MM_PER_IMP_JOBB@@;
+
+// --- T7 sebessegmeres: PWM = PWM_PER_MMS * v + PWM_NULLA ---
+//     ELOZETES ertek a T2 D-fazisabol illesztve. Futtasd a T7-et
+//     es ird felul -- ez a ket szam teszi egyformava az ot robotot.
+const float PWM_PER_MMS = @@PWM_PER_MMS@@;
+const float PWM_NULLA   = @@PWM_NULLA@@;
+
+// --- porges: HANGOLT szam, nem fizikai nyomtav (a csuszast is tartalmazza)
+const float NYOMTAV_MM  = @@NYOMTAV_MM@@;
+const float PORGES_TRIM = @@PORGES_TRIM@@;    // tul sokat porog -> 0,98 | keveset -> 1,02
+
+// --- egyenes futas arany-finomitasa (1,000 = nincs javitas)
+//     farat BALRA tolja -> 0,996 | JOBBRA -> 1,004 | egy lepes ~4 mm/meter
+const float BAL_TRIM = @@BAL_TRIM@@;
+
+// --- holtsav (T2 C fazis): bal 20/40, jobb 25/20 -> a legrosszabb 40
+const int PWM_MIN = @@PWM_MIN@@;            // ez ala semmilyen szamitas nem viheti
+
+
+// =====================================================================
+//  3. KOZOS SHOW-BEALLITASOK  --  MIND AZ OT ROBOTON UGYANAZ
+// =====================================================================
+
+const float SEBESSEG_MM_S = 230.0;   // egyenes haladas
+const float PORGES_MM_S   = 230.0;   // a kerekek keruleti sebessege porgesben
+
+const float SZINKRON       = 8.0;    // keresztcsatolas ereje
+                                     //   billeg/rangat -> 4.0
+                                     //   szetcsuszik   -> 12.0
+const float LASSITAS_ARANY = 0.85;   // az ut ennyi resze utan lassitunk
+const float LASSU_SZORZO   = 1.00;   // 1,00 = nincs lassitas (ez valt be)
+                                     //   0,80 = kisebb tulfutas, de a
+                                     //   holtsav miatt megallhat
+const int   FEK_MS         = 70;     // aktiv fek hossza (0 = nincs)
+const int   PWM_PLAFON     = 200;
+
+const unsigned long IDOKORLAT = 20000;
+
+const float SHOW_PI = 3.14159265;
+
+
+// =====================================================================
+//  4. A MOZGATO CIKLUS  --  INNENTOL NEM KELL ALLITANI
+// =====================================================================
+
+long imp_bal(float mm)  { return (long)(mm / MM_PER_IMP_BAL  + (mm < 0 ? -0.5 : 0.5)); }
+long imp_jobb(float mm) { return (long)(mm / MM_PER_IMP_JOBB + (mm < 0 ? -0.5 : 0.5)); }
+
+long abszolut(long x) { return (x < 0) ? -x : x; }
+
+int hatarol(int v, int also, int felso) {
+  if (v < also)  return also;
+  if (v > felso) return felso;
+  return v;
+}
+
+// mm/s -> PWM, a robot sajat mert egyenesevel
+int pwm_sebessegbol(float mm_s) {
+  int p = (int)(PWM_PER_MMS * mm_s + PWM_NULLA + 0.5);
+  return hatarol(p, PWM_MIN, PWM_PLAFON);
+}
+
+//  cb, cj = elojeles impulzus-cel kerekenkent (+ = elore, - = hatra)
+//  A ket kerek EGYSZERRE er celba: aki siet, lassit; aki lemarad, gyorsit.
+//  Az enkoder nyers elojele ezen a roboton forditott, ezert abszolut
+//  ertekkel dolgozunk -- egy mozgas alatt egy kerek ugyis egy iranyba megy.
+void mozgas(long cb, long cj, int pwm) {
+  long celB = abszolut(cb);
+  long celJ = abszolut(cj);
+  int  irB  = (cb >= 0) ? 1 : -1;
+  int  irJ  = (cj >= 0) ? 1 : -1;
+
+  if (celB < 1 && celJ < 1) return;
+
+  int pwmLassu = hatarol((int)((float)pwm * LASSU_SZORZO), PWM_MIN, PWM_PLAFON);
+
+  enkoderNullaz();
+  unsigned long t0 = millis();
+
+  while (true) {
+    long eB = abszolut(encBal);
+    long eJ = abszolut(encJobb);
+
+    bool keszB = (celB < 1) || (eB >= celB);
+    bool keszJ = (celJ < 1) || (eJ >= celJ);
+    if (keszB && keszJ) break;
+    if (millis() - t0 > IDOKORLAT) {
+      uzenet("!!! idokorlat -- a mozgas nem fejezodott be");
+      break;
+    }
+
+    // hol tart a ket kerek a SAJAT celjahoz kepest (0..1)
+    float fB = (celB < 1) ? 1.0 : (float)eB / (float)celB;
+    float fJ = (celJ < 1) ? 1.0 : (float)eJ / (float)celJ;
+
+    int alap = (((fB + fJ) * 0.5) >= LASSITAS_ARANY) ? pwmLassu : pwm;
+
+    // + = a bal siet -> a bal kap kevesebbet, a jobb tobbet
+    float hiba = fB - fJ;
+    int   korr = hatarol((int)(SZINKRON * hiba * (float)alap), -alap / 2, alap / 2);
+
+    int pB = keszB ? 0 : hatarol(alap - korr, PWM_MIN, PWM_PLAFON);
+    int pJ = keszJ ? 0 : hatarol(alap + korr, PWM_MIN, PWM_PLAFON);
+
+    motor(irB * pB, irJ * pJ);
+    varj(10);
+  }
+
+  // AKTIV FEK -- a puszta motor(0,0) csak szabadon gurulas
+  if (FEK_MS > 0) {
+    motor(-irB * PWM_MIN, -irJ * PWM_MIN);
+    varj(FEK_MS);
+  }
+  motor(0, 0);
+  varj(200);
+}
+
+
+// =====================================================================
+//  5. A MOZGAS-KESZLET  --  ezeket hivod a koreografiaban
+// =====================================================================
+
+unsigned long lepesStart = 0;
+void lepes_kezd() { lepesStart = millis(); }
+
+// kitolti a lepes idokeretet -- ettol marad szinkronban az ot robot
+void lepes_var(unsigned long ido) {
+  motor(0, 0);
+  while (millis() - lepesStart < ido) varj(20);
+}
+
+void megy_cm(float cm) {
+  float mm = cm * 10.0;
+  long cb = imp_bal(mm * BAL_TRIM), cj = imp_jobb(mm);
+  mozgas(cb, cj, pwm_sebessegbol(SEBESSEG_MM_S));
+  uzenet("megy " + String(cm, 0) + " cm | cel " + String(cb) + "/" + String(cj)
+         + " -> bal=" + String(encBal) + " jobb=" + String(encJobb));
+}
+
+// + = JOBBRA (oramutato szerint), - = BALRA. Helyben porges.
+void porog_fok(float fok) {
+  float ivMm = SHOW_PI * NYOMTAV_MM * PORGES_TRIM * (fok / 360.0);
+  long cb = imp_bal(ivMm), cj = -imp_jobb(ivMm);
+  mozgas(cb, cj, pwm_sebessegbol(PORGES_MM_S));
+  uzenet("porog " + String(fok, 0) + " fok | cel " + String(cb) + "/" + String(cj)
+         + " -> bal=" + String(encBal) + " jobb=" + String(encJobb));
+}
+
+void elore_cm(float cm)  { megy_cm(+cm); }
+void hatra_cm(float cm)  { megy_cm(-cm); }
+void balra_fok(float f)  { porog_fok(-f); }
+void jobbra_fok(float f) { porog_fok(+f); }
+void balra_kor(float k)  { porog_fok(-360.0 * k); }
+void jobbra_kor(float k) { porog_fok(+360.0 * k); }
+
+
+// =====================================================================
+//  6. A KOREOGRAFIA  --  EZT IRD AT (mind az ot roboton UGYANAZ a lista)
+// =====================================================================
+//
+//  Minta:  lepes_kezd();  <mozgas>;  lepes_var(<ezredmasodperc>);
+//
+//  Az idot a LEGLASSABB robothoz meretezd: a tobbi allva varja ki a
+//  maradekot, es igy mind egyszerre lep tovabb. Enelkul a show nehany
+//  lepes utan szetcsuszik IDOBEN, akkor is, ha pozicioban mind pontos.
+
+void koreografia() {
+
+@@KOREOGRAFIA@@
+
+}
+
+
+// =====================================================================
+//  7. INDITAS
+// =====================================================================
+
+void indulas() {
+  motor(0, 0);
+  uzenet("=== SHOW v5 -- robot " + String(ROBOT) + " ===");
+  uzenet("sebesseg " + String(SEBESSEG_MM_S, 0) + " mm/s -> PWM "
+         + String(pwm_sebessegbol(SEBESSEG_MM_S))
+         + " | porges " + String(PORGES_MM_S, 0) + " mm/s -> PWM "
+         + String(pwm_sebessegbol(PORGES_MM_S)));
+  uzenet("nyomtav " + String(NYOMTAV_MM, 1) + " | szinkron "
+         + String(SZINKRON, 1) + " | fek " + String(FEK_MS) + " ms");
+  uzenet("Indulas 3 mp mulva.");
+  varj(3000);
+
+  koreografia();
+
+  motor(0, 0);
+  uzenet("=========== SHOW VEGE ===========");
+}
+
+
+// =====================================================================
+//  8. VEZERLES
+// =====================================================================
+
+void vezerles() {
+  motor(0, 0);      // a koreografia az indulas()-ban fut le
+}

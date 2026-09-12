@@ -1,0 +1,31 @@
+{
+  "_comment": [
+    "Per-robot calibration for block 2 of the emitted sketch.",
+    "Source for robot 1: DOKUMENTACIO_robot1.md section 5 (2026-09-08, parquet).",
+    "PWM_PER_MMS / PWM_NULLA of robot 1 are PROVISIONAL (T7 not yet run).",
+    "Robots 2-5: calibration is null until MERESI_MENET.md has been done on them.",
+    "The emitter refuses to produce a file for a robot with null calibration."
+  ],
+  "robots": [
+    {
+      "id": 1,
+      "name": "robot 1",
+      "measured": "2026-09-08",
+      "floor": "parketta",
+      "calibration": {
+        "MM_PER_IMP_BAL": 0.34582,
+        "MM_PER_IMP_JOBB": 0.34392,
+        "PWM_PER_MMS": 0.31449,
+        "PWM_NULLA": -2.35,
+        "NYOMTAV_MM": 143.0,
+        "PORGES_TRIM": 1.00,
+        "BAL_TRIM": 0.996,
+        "PWM_MIN": 50
+      }
+    },
+    { "id": 2, "name": "robot 2", "measured": null, "floor": null, "calibration": null },
+    { "id": 3, "name": "robot 3", "measured": null, "floor": null, "calibration": null },
+    { "id": 4, "name": "robot 4", "measured": null, "floor": null, "calibration": null },
+    { "id": 5, "name": "robot 5", "measured": null, "floor": null, "calibration": null }
+  ]
+}

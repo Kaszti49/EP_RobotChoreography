@@ -1,0 +1,119 @@
+{
+  "_comment": [
+    "Example show: five robots, two acts, an anchor beat between them.",
+    "Start marks are a line at y=400, 750 mm apart, all facing +Y (away from the audience).",
+    "Act 1 spreads the line into a shallow arc, looks right and back, and does a wave.",
+    "The anchor beat is a 10 s hold where the crew re-places every robot on its mark;",
+    "without it the error budget of five robots on a 4 x 3 m floor is spent after ~1 m each.",
+    "Act 2 bows to the audience, steps forward and spins."
+  ],
+  "field": { "width_mm": 4000, "height_mm": 3000, "margin_mm": 250 },
+  "robots": [
+    { "id": 1, "start": { "x": 500,  "y": 400, "theta": 90 } },
+    { "id": 2, "start": { "x": 1250, "y": 400, "theta": 90 } },
+    { "id": 3, "start": { "x": 2000, "y": 400, "theta": 90 } },
+    { "id": 4, "start": { "x": 2750, "y": 400, "theta": 90 } },
+    { "id": 5, "start": { "x": 3500, "y": 400, "theta": 90 } }
+  ],
+  "beats": [
+    {
+      "name": "elore",
+      "duration_ms": 5000,
+      "moves": {
+        "1": { "type": "primitive", "op": "elore_cm", "value": 50 },
+        "2": { "type": "primitive", "op": "elore_cm", "value": 50 },
+        "3": { "type": "primitive", "op": "elore_cm", "value": 50 },
+        "4": { "type": "primitive", "op": "elore_cm", "value": 50 },
+        "5": { "type": "primitive", "op": "elore_cm", "value": 50 }
+      }
+    },
+    {
+      "name": "iv",
+      "duration_ms": 6000,
+      "moves": {
+        "1": { "type": "goto", "x": 500,  "y": 1100, "face": 90 },
+        "2": { "type": "goto", "x": 1250, "y": 1400, "face": 90 },
+        "3": { "type": "goto", "x": 2000, "y": 1600, "face": 90 },
+        "4": { "type": "goto", "x": 2750, "y": 1400, "face": 90 },
+        "5": { "type": "goto", "x": 3500, "y": 1100, "face": 90 }
+      }
+    },
+    {
+      "name": "nez jobbra",
+      "duration_ms": 3000,
+      "moves": {
+        "1": { "type": "primitive", "op": "jobbra_fok", "value": 90 },
+        "2": { "type": "primitive", "op": "jobbra_fok", "value": 90 },
+        "3": { "type": "primitive", "op": "jobbra_fok", "value": 90 },
+        "4": { "type": "primitive", "op": "jobbra_fok", "value": 90 },
+        "5": { "type": "primitive", "op": "jobbra_fok", "value": 90 }
+      }
+    },
+    {
+      "name": "vissza nez",
+      "duration_ms": 3000,
+      "moves": {
+        "1": { "type": "primitive", "op": "balra_fok", "value": 90 },
+        "2": { "type": "primitive", "op": "balra_fok", "value": 90 },
+        "3": { "type": "primitive", "op": "balra_fok", "value": 90 },
+        "4": { "type": "primitive", "op": "balra_fok", "value": 90 },
+        "5": { "type": "primitive", "op": "balra_fok", "value": 90 }
+      }
+    },
+    {
+      "name": "hullam",
+      "duration_ms": 3000,
+      "moves": {
+        "1": { "type": "primitive", "op": "elore_cm", "value": 15 },
+        "2": { "type": "primitive", "op": "hatra_cm", "value": 15 },
+        "3": { "type": "primitive", "op": "elore_cm", "value": 15 },
+        "4": { "type": "primitive", "op": "hatra_cm", "value": 15 },
+        "5": { "type": "primitive", "op": "elore_cm", "value": 15 }
+      }
+    },
+    {
+      "name": "szunet - ujra a jelre",
+      "duration_ms": 10000,
+      "anchor": true,
+      "moves": {}
+    },
+    {
+      "name": "meghajlas",
+      "duration_ms": 4000,
+      "moves": {
+        "1": { "type": "goto", "x": 500,  "y": 1250, "face": 270 },
+        "2": { "type": "goto", "x": 1250, "y": 1250, "face": 270 },
+        "3": { "type": "goto", "x": 2000, "y": 1750, "face": 270 },
+        "4": { "type": "goto", "x": 2750, "y": 1250, "face": 270 },
+        "5": { "type": "goto", "x": 3500, "y": 1250, "face": 270 }
+      }
+    },
+    {
+      "name": "kozelebb",
+      "duration_ms": 4000,
+      "moves": {
+        "1": { "type": "goto", "x": 500,  "y": 950 },
+        "2": { "type": "goto", "x": 1250, "y": 950 },
+        "3": { "type": "goto", "x": 2000, "y": 1450 },
+        "4": { "type": "goto", "x": 2750, "y": 950 },
+        "5": { "type": "goto", "x": 3500, "y": 950 }
+      }
+    },
+    {
+      "name": "porges",
+      "duration_ms": 6000,
+      "moves": {
+        "1": { "type": "primitive", "op": "balra_fok", "value": 360 },
+        "2": { "type": "primitive", "op": "jobbra_fok", "value": 360 },
+        "3": { "type": "primitive", "op": "balra_fok", "value": 360 },
+        "4": { "type": "primitive", "op": "jobbra_fok", "value": 360 },
+        "5": { "type": "primitive", "op": "balra_fok", "value": 360 }
+      }
+    },
+    {
+      "name": "vege",
+      "duration_ms": 2000,
+      "moves": {}
+    }
+  ]
+}
