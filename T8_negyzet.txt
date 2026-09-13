@@ -1,0 +1,291 @@
+// =====================================================================
+//  T8 -- NEGYZET-TESZT   (a driftbudzse meresere)
+//
+//  EZ A TESZT DONTI EL, HOGY EPITHETO-E KOORDINATA-ALAPU KOREOGRAFIA.
+//
+//  A robot olyan utat jar be, aminek a VEGE = az ELEJE. Barmi elteres
+//  a start- es a vegpozicio kozott tiszta halmozodo hiba. Nem kell
+//  hozza semmilyen kulso meres, csak egy jel a padlon.
+//
+//  A hiba ket forrasbol jon, es ez a teszt SZETVALASZTJA oket:
+//    - szoghiba  (porgesnel csuszik a kerek)  -> 1. es 2. teszt meri
+//    - uthiba    (egyenesben sodrodik)        -> a 3-6. kulonbsegebol jon ki
+//
+//  MIERT KELL 50 cm-es ES 100 cm-es negyzet is:
+//    mindketto 4 porgest tartalmaz, de a 100-as ketszer annyit hajt.
+//    Ha a ket negyzet zarasi hibaja KOZEL AZONOS -> a hibat a PORGES
+//    adja. Ha a 100-asnal KETSZER akkora -> a hibat a HAJTAS adja.
+//    Ez donti el, hogy a show-t rovid vagy keves-porgeses lepesekbol
+//    kell-e felepiteni.
+//
+//  FIGYELEM: a NYOMTAV_MM = 143 harom TELJES porgesre (1080 fok) lett
+//  hangolva. Egy 90 fokos porges rovid: aranyaban sokkal nagyobb reszt
+//  tesz ki belole a gyorsitas es a fekezes. Konnyen lehet, hogy 90
+//  fokra MAS nyomtav kell. Az 1. teszt pont ezt meri.
+//
+// ---------------------------------------------------------------------
+//  MERESI PROTOKOLL  --  ezt csinald a padlon
+// ---------------------------------------------------------------------
+//  ELOKESZULET (egyszer):
+//   1. Rajzolj/ragassz KET pontot a robot tetejere, a hossztengelyen:
+//      egyet elol kozepen, egyet hatul kozepen. Ez a robot "nyila".
+//   2. Ragassz egy A4-es lapot vagy egy szeles maszkolo-szalag foltot
+//      a start helyere. Erre fogsz rajzolni.
+//
+//  MINDEN FUTASNAL:
+//   1. Allitsd a robotot a lapra. Egy hegyes ceruzaval jelold meg a
+//      KET pontot a lapon: ez a START. Huzd ossze oket vonallal.
+//   2. Start. Hagyd vegigfutni.
+//   3. Jelold meg ugyanazt a ket pontot a lapon: ez a VEG.
+//      (Ha a robot lecsuszott a laprol, hasznalj nagyobb lapot vagy
+//      csokkentsd a negyzet meretet -- ne becsuld a helyet.)
+//   4. Ird fel ket szamot:
+//      - ZARASI HIBA: a start- es vegpont tavolsaga mm-ben
+//        (a hatso pontokat merd, az a robot forgaskozeppontja)
+//      - SZOGHIBA: a ket vonal kozott bezart szog fokban, ELOJELESEN
+//        (+ = a robot jobbra all el a starthoz kepest)
+//
+//  MINDEN TESZTET HAROMSZOR. Nem egy futast nezunk, hanem az atlagot
+//  ES a szorast. A szoras ugyanolyan fontos, mint az atlag:
+//    - nagy atlag + kis szoras = RENDSZERES hiba -> kalibraciobol
+//      kikorrigalhato, es a koreografia-forditoba beepitheto
+//    - kis atlag + nagy szoras = CSUSZAS -> nem javithato, csak
+//      budzsetkent tervezheto be
+//
+//  ELOFELTETEL: friss akku (V parancs, 8 V folott), es ugyanaz a
+//  padlo, amin a show lesz.
+//
+// ---------------------------------------------------------------------
+//  ADATLAP  --  ezt add vissza (robot 1, 6 teszt x 3 futas)
+// ---------------------------------------------------------------------
+//  teszt | futas | zarasi hiba (mm) | szoghiba (fok)
+//    1   |   1   |                  |
+//    1   |   2   |                  |
+//    1   |   3   |                  |
+//    2   |  1-3  |                  |
+//    3   |  1-3  |                  |
+//    4   |  1-3  |                  |
+//    5   |  1-3  |                  |
+//    6   |  1-3  |                  |
+//
+//  Az 1-2. tesztnel a zarasi hiba kicsi lesz (helyben porog), ott a
+//  SZOGHIBA a lenyeg. A 3-6.-nal mindketto szamit.
+// =====================================================================
+
+
+// ============ 1. MELYIK ROBOT VAGYOK ============
+
+#define ROBOT 1
+
+
+// ============ MELYIK TESZT FUSSON  (ezt allitod at) ============
+//
+//   1 = 4 x 90 fok JOBBRA, helyben          -> tiszta szoghiba
+//   2 = 4 x 90 fok BALRA,  helyben          -> tiszta szoghiba, tukor
+//   3 = negyzet 100 cm, JOBBRA fordulva
+//   4 = negyzet 100 cm, BALRA fordulva
+//   5 = negyzet  50 cm, JOBBRA fordulva
+//   6 = negyzet  50 cm, BALRA fordulva
+
+const int TESZT = 1;
+
+
+// =====================================================================
+//  2. PER ROBOT MERT ADATOK  --  a SHOW_robot1.txt-bol valtozatlanul
+// =====================================================================
+
+const float MM_PER_IMP_BAL  = 0.34582;
+const float MM_PER_IMP_JOBB = 0.34392;
+
+const float PWM_PER_MMS = 0.31449;
+const float PWM_NULLA   = -2.35;
+
+const float NYOMTAV_MM  = 143.0;
+const float PORGES_TRIM = 1.00;
+
+const float BAL_TRIM = 0.996;
+
+const int PWM_MIN = 50;
+
+
+// =====================================================================
+//  3. KOZOS BEALLITASOK  --  ugyanaz, mint a show-ban
+//     (hogy a mert hiba a SHOW korulmenyeire vonatkozzon)
+// =====================================================================
+
+const float SEBESSEG_MM_S = 230.0;
+const float PORGES_MM_S   = 230.0;
+
+const float SZINKRON       = 8.0;
+const float LASSITAS_ARANY = 0.85;
+const float LASSU_SZORZO   = 1.00;
+const int   FEK_MS         = 70;
+const int   PWM_PLAFON     = 200;
+
+const unsigned long IDOKORLAT = 20000;
+
+const float SHOW_PI = 3.14159265;
+
+// szunet ket mozgas kozott (hogy a lendulet kifusson, es lasd a lepeseket)
+const int SZUNET_MS = 800;
+
+
+// =====================================================================
+//  4. A MOZGATO CIKLUS  --  a SHOW v5-tel AZONOS, ne nyulj hozza
+//     (ha itt barmit valtoztatsz, a mert hiba nem a show hibaja lesz)
+// =====================================================================
+
+long imp_bal(float mm)  { return (long)(mm / MM_PER_IMP_BAL  + (mm < 0 ? -0.5 : 0.5)); }
+long imp_jobb(float mm) { return (long)(mm / MM_PER_IMP_JOBB + (mm < 0 ? -0.5 : 0.5)); }
+
+long abszolut(long x) { return (x < 0) ? -x : x; }
+
+int hatarol(int v, int also, int felso) {
+  if (v < also)  return also;
+  if (v > felso) return felso;
+  return v;
+}
+
+int pwm_sebessegbol(float mm_s) {
+  int p = (int)(PWM_PER_MMS * mm_s + PWM_NULLA + 0.5);
+  return hatarol(p, PWM_MIN, PWM_PLAFON);
+}
+
+void mozgas(long cb, long cj, int pwm) {
+  long celB = abszolut(cb);
+  long celJ = abszolut(cj);
+  int  irB  = (cb >= 0) ? 1 : -1;
+  int  irJ  = (cj >= 0) ? 1 : -1;
+
+  if (celB < 1 && celJ < 1) return;
+
+  int pwmLassu = hatarol((int)((float)pwm * LASSU_SZORZO), PWM_MIN, PWM_PLAFON);
+
+  enkoderNullaz();
+  unsigned long t0 = millis();
+
+  while (true) {
+    long eB = abszolut(encBal);
+    long eJ = abszolut(encJobb);
+
+    bool keszB = (celB < 1) || (eB >= celB);
+    bool keszJ = (celJ < 1) || (eJ >= celJ);
+    if (keszB && keszJ) break;
+    if (millis() - t0 > IDOKORLAT) {
+      uzenet("!!! idokorlat -- a mozgas nem fejezodott be");
+      break;
+    }
+
+    float fB = (celB < 1) ? 1.0 : (float)eB / (float)celB;
+    float fJ = (celJ < 1) ? 1.0 : (float)eJ / (float)celJ;
+
+    int alap = (((fB + fJ) * 0.5) >= LASSITAS_ARANY) ? pwmLassu : pwm;
+
+    float hiba = fB - fJ;
+    int   korr = hatarol((int)(SZINKRON * hiba * (float)alap), -alap / 2, alap / 2);
+
+    int pB = keszB ? 0 : hatarol(alap - korr, PWM_MIN, PWM_PLAFON);
+    int pJ = keszJ ? 0 : hatarol(alap + korr, PWM_MIN, PWM_PLAFON);
+
+    motor(irB * pB, irJ * pJ);
+    varj(10);
+  }
+
+  if (FEK_MS > 0) {
+    motor(-irB * PWM_MIN, -irJ * PWM_MIN);
+    varj(FEK_MS);
+  }
+  motor(0, 0);
+  varj(200);
+}
+
+
+// =====================================================================
+//  5. A MOZGAS-KESZLET
+// =====================================================================
+
+void megy_cm(float cm) {
+  float mm = cm * 10.0;
+  long cb = imp_bal(mm * BAL_TRIM), cj = imp_jobb(mm);
+  mozgas(cb, cj, pwm_sebessegbol(SEBESSEG_MM_S));
+  uzenet("  megy " + String(cm, 0) + " cm | cel " + String(cb) + "/" + String(cj)
+         + " -> bal=" + String(encBal) + " jobb=" + String(encJobb));
+}
+
+void porog_fok(float fok) {
+  float ivMm = SHOW_PI * NYOMTAV_MM * PORGES_TRIM * (fok / 360.0);
+  long cb = imp_bal(ivMm), cj = -imp_jobb(ivMm);
+  mozgas(cb, cj, pwm_sebessegbol(PORGES_MM_S));
+  uzenet("  porog " + String(fok, 0) + " fok | cel " + String(cb) + "/" + String(cj)
+         + " -> bal=" + String(encBal) + " jobb=" + String(encJobb));
+}
+
+void elore_cm(float cm)  { megy_cm(+cm); }
+void balra_fok(float f)  { porog_fok(-f); }
+void jobbra_fok(float f) { porog_fok(+f); }
+
+void szunet() { motor(0, 0); varj(SZUNET_MS); }
+
+
+// =====================================================================
+//  6. A TESZTEK
+// =====================================================================
+
+// negyzet: 4 x (oldal + 90 fok fordulas). irany: +1 = jobbra, -1 = balra
+void negyzet(float oldal_cm, int irany) {
+  for (int i = 1; i <= 4; i++) {
+    uzenet("-- " + String(i) + ". oldal --");
+    elore_cm(oldal_cm);
+    szunet();
+    if (irany > 0) jobbra_fok(90); else balra_fok(90);
+    szunet();
+  }
+}
+
+// tiszta szogteszt: 4 x 90 fok helyben, hajtas nelkul
+void csak_porges(int irany) {
+  for (int i = 1; i <= 4; i++) {
+    uzenet("-- " + String(i) + ". negyed --");
+    if (irany > 0) jobbra_fok(90); else balra_fok(90);
+    szunet();
+  }
+}
+
+void teszt_futtatas() {
+  if      (TESZT == 1) { uzenet("T8/1 -- 4 x 90 fok JOBBRA, helyben");  csak_porges(+1); }
+  else if (TESZT == 2) { uzenet("T8/2 -- 4 x 90 fok BALRA, helyben");   csak_porges(-1); }
+  else if (TESZT == 3) { uzenet("T8/3 -- negyzet 100 cm, JOBBRA");      negyzet(100, +1); }
+  else if (TESZT == 4) { uzenet("T8/4 -- negyzet 100 cm, BALRA");       negyzet(100, -1); }
+  else if (TESZT == 5) { uzenet("T8/5 -- negyzet 50 cm, JOBBRA");       negyzet(50,  +1); }
+  else if (TESZT == 6) { uzenet("T8/6 -- negyzet 50 cm, BALRA");        negyzet(50,  -1); }
+  else                 { uzenet("!!! ismeretlen TESZT szam: " + String(TESZT)); }
+}
+
+
+// =====================================================================
+//  7. INDITAS
+// =====================================================================
+
+void indulas() {
+  motor(0, 0);
+  uzenet("=== T8 NEGYZET-TESZT -- robot " + String(ROBOT) + " ===");
+  uzenet("sebesseg " + String(SEBESSEG_MM_S, 0) + " mm/s -> PWM "
+         + String(pwm_sebessegbol(SEBESSEG_MM_S))
+         + " | nyomtav " + String(NYOMTAV_MM, 1));
+  uzenet("JELOLD BE A START POZICIOT MOST. Indulas 5 mp mulva.");
+  varj(5000);
+
+  teszt_futtatas();
+
+  motor(0, 0);
+  uzenet("=== VEGE -- jelold be a vegpoziciot, majd merj ===");
+}
+
+
+// =====================================================================
+//  8. VEZERLES
+// =====================================================================
+
+void vezerles() {
+  motor(0, 0);
+}

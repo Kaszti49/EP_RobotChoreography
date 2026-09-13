@@ -101,9 +101,9 @@ test('3. feasibility: a beat too short for its slowest robot, and a move longer 
   assert.match(f.findings[0].message, /does not fit beat 1/);
   assert.equal(f.stats[0].slowest.robot, 1);
 
-  // a 5 m drive needs > 20 s of motion: aborted by the engine's timeout
+  // a 7 m drive needs > 20 s of motion: aborted by the engine's timeout
   const tooLong = compileShow(tinyShow([{
-    name: 'marathon', duration_ms: 60000, moves: { 1: { type: 'primitive', op: 'elore_cm', value: 500 } },
+    name: 'marathon', duration_ms: 60000, moves: { 1: { type: 'primitive', op: 'elore_cm', value: 700 } },
   }]));
   const g = checkFeasibility(tooLong);
   assert.ok(g.findings.some((x) => /IDOKORLAT/.test(x.message)));

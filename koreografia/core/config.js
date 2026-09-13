@@ -90,21 +90,34 @@ export const DRIFT_CEILING_MM = 300;
 // ---------------------------------------------------------------------
 export const TIMING = Object.freeze({
   // block 3: SEBESSEG_MM_S / PORGES_MM_S
-  drive_mm_s: 230,
-  spin_rim_mm_s: 230,
-  // block 2 of robot 1: NYOMTAV_MM. Spin time is computed with the
-  // nominal track; the per-robot difference is a few percent and is
-  // absorbed by the safety factor.
-  track_mm: 143,
-  // block 3: FEK_MS, and the fixed varj(200) at the end of mozgas()
-  brake_ms: 70,
+  drive_mm_s: 300,
+  spin_rim_mm_s: 300,
+  // block 3: LASSITAS_MM / LASSU_MM_S -- the last LASSITAS_MM of wheel
+  // travel (per wheel) are crawled at LASSU_MM_S.
+  slow_zone_mm: 100,
+  slow_mm_s: 150,
+  // The physical track (DOKUMENTACIO_robot1.md section 4). Spin time is
+  // computed with this nominal value; each robot's tuned NYOMTAV_MM in
+  // robots.json is within a few percent (robot 1: 148.3), which the
+  // safety factor absorbs.
+  track_mm: 148,
+  // block 3: FEK_MAX_MS (the active brake runs until the wheels stop,
+  // at most this long) plus the varj(100) after it; and the fixed
+  // varj(200) at the end of mozgas().
+  brake_ms: 400 + 100,
   settle_ms: 200,
+  // block 3: up to JAVITAS_MAX corrections after the brake. Measured
+  // 2026-09-13 (robot 1): a correction takes ~300 ms and most moves need
+  // none; budget one. (Worst case is 1500 ms creep each, but then the
+  // safety factor below covers it.)
+  correction_ms: 300,
   // block 3: IDOKORLAT -- a single mozgas() is aborted after this.
   move_timeout_ms: 20000,
 
-  // ASSUMPTION: acceleration / deceleration overhead per primitive.
-  // The engine has no ramp, but the motors do not reach speed instantly
-  // and the sync loop throttles the leading wheel. Not measured.
+  // block 3: INDULAS_MS soft start (PWM ramps up over this time).
+  // 2026-09-13 telemetry (robot 1): a 1 m drive took 3.7 s against
+  // 3.67 s of modelled motion, a 3-turn spin 5.9 s against 4.8 s + two
+  // corrections.
   ramp_ms: 300,
 
   // A beat must fit  sum(estimated primitive time) * safety_factor.

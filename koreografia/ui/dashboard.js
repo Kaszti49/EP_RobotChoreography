@@ -266,8 +266,9 @@ export function initDashboard(ctx) {
       $('dashSetupOut').textContent = m
         ? `egy fordulat: bal ${m[1]}, jobb ${m[2]} imp (cél 408) — ${fmtMm(id, Number(m[1]), Number(m[2]))}; a keréknek pontosan egyet kellett fordulnia`
         : line;
-    } else if (f[0] === 'N' && f.length === 5) {
+    } else if (f[0] === 'N' && f.length >= 5) {
       $('signEncL').value = f[1]; $('signEncR').value = f[2]; $('signMotL').value = f[3]; $('signMotR').value = f[4];
+      $('signCsere').value = f[5] ?? '0'; // v7: PWM + encoder wiring swapped
     } else if (line.includes('N,AUTO kesz')) {
       $('dashSetupOut').textContent = line;
       setStatus('Enkóder-irány beállítva', 'ok');
@@ -295,7 +296,7 @@ export function initDashboard(ctx) {
   });
   $('dashSignQuery').addEventListener('click', () => send('N'));
   $('dashSignSave').addEventListener('click', () =>
-    send(`N,${$('signEncL').value},${$('signEncR').value},${$('signMotL').value},${$('signMotR').value}`));
+    send(`N,${$('signEncL').value},${$('signEncR').value},${$('signMotL').value},${$('signMotR').value},${$('signCsere').value}`));
 
   $('btnRaw').addEventListener('click', () => {
     const line = $('rawCmd').value.trim();

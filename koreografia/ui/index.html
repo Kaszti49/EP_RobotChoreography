@@ -122,6 +122,7 @@
   <span class="pill" id="connState">nincs kapcsolat</span>
   <label class="muted">Robot <select id="robotSel"></select></label>
   <button id="btnConnect" class="primary">Csatlakozás</button>
+  <button id="btnStartAll" class="success" title="T minden csatlakoztatott robotnak egyszerre — a show közös ütemórája (lepes_var) tartja őket együtt">▶ Start mind</button>
   <button id="btnStopAll" class="danger" title="S minden csatlakoztatott robotnak">■ STOP</button>
   <span class="status" id="status">—</span>
 </header>
@@ -137,6 +138,8 @@
     <div id="koreoBar" class="row">
       <input type="file" id="fileInput" accept=".json,application/json" title="show JSON betöltése">
       <button id="btnExample">Példa betöltése</button>
+      <button id="btnTest" title="robot 1 és 2: 1 m előre, 1 m hátra, 3 kör balra, 3 kör jobbra (data/teszt-1m-3kor.json)">Teszt betöltése</button>
+      <button id="btnSync" title="két robot egyszerre: 1 m előre, 1 kör balra, 1 kör jobbra, 1 m hátra (data/szinkron-teszt.json)">Szinkron-teszt betöltése</button>
       <button id="btnSave">JSON mentése</button>
       <button id="btnEmit">Arduino .txt letöltése</button>
       <button id="btnToCode" title="A kiválasztott robot kódja a Kód fülre">→ Kód fülre</button>
@@ -233,6 +236,7 @@
           <label>enkóder jobb <select id="signEncR"><option value="1">+1</option><option value="-1">−1</option></select></label>
           <label>motor bal <select id="signMotL"><option value="1">+1</option><option value="-1">−1</option></select></label>
           <label>motor jobb <select id="signMotR"><option value="1">+1</option><option value="-1">−1</option></select></label>
+          <label title="v7: a két PWM-vezeték és a két enkóder keresztben van (egy motor egyedül nem forog) — a keret szoftverből cserél">kereszt-bekötés <select id="signCsere"><option value="0">nem</option><option value="1">igen</option></select></label>
           <button id="dashSignQuery" title="N">Lekérdez</button>
           <button id="dashSignSave" title="N,encL,encR,motL,motR">Mentés a robotra</button>
         </div>

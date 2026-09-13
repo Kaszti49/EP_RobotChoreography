@@ -13,7 +13,7 @@ node --test                                  # the test suite (78 tests)
 node tools/build.js data/example-show.json   # compile + validate, print the report
 node tools/build.js data/example-show.json out/   # ... and emit out/SHOW_robot<N>.txt
 node tools/serve.js                          # UI at http://localhost:8080/ui/ (+ /api/compile for the Kod tab)
-node tools/make-template.js                  # regenerate the template after SHOW_robot1.txt changes
+node tools/make-template.js                  # drift check: template vs SHOW_robot1.txt (blocks 5, 8 must match)
 ```
 
 ## Layout
@@ -38,7 +38,7 @@ ui/           one page, three tabs (app.js = shell + Koreografia; code-tab.js; d
 transport/    Transport interface, manual (files), Web Serial link, OTA protocol -- see its README
 firmware/     OUR OWN robot framework ("keret-ep") that the emitted show is compiled into
 data/         robots.json (calibration; robot 1 filled, 2-5 null), example-show.json
-templates/    show_template.txt = SHOW_robot1.txt with placeholders (generated, tested)
+templates/    show_template.txt = THE motion engine (v6) with placeholders; SHOW_robot1.txt is its v5 ancestor
 tools/        build.js (CLI), serve.js (static server + POST /api/compile), make-template.js,
               keret_stub.h (g++ stub), firmware.js (arduino-cli compile + USB upload)
 test/         node --test
@@ -130,10 +130,25 @@ Errors block emission. Warnings do not.
 ## Emitting and uploading
 
 `emit.js` takes `templates/show_template.txt` and substitutes `@@ROBOT@@`, the eight block-2
-calibration constants from `data/robots.json`, and `@@KOREOGRAFIA@@`. **Blocks 3, 4, 5, 7
-and 8 — the motion engine — are byte-for-byte copies of `SHOW_robot1.txt`**;
-`test/emit.test.js` and `test/template.test.js` assert this, so the engine cannot drift.
-If you believe the engine has a bug, report it; do not fix it in the template.
+calibration constants from `data/robots.json`, and `@@KOREOGRAFIA@@`. **The template is the
+motion engine** (blocks 3, 4, 7 — "SHOW v6", 2026-09-13); `SHOW_robot1.txt` is the v5 it grew
+out of and is kept untouched as the measured baseline. Blocks 5 and 8 — the movement API the
+choreography is written against (`elore_cm`, `porog_fok` sign convention, …) — must stay
+byte-identical to `SHOW_robot1.txt`; `test/template.test.js` and `node tools/make-template.js`
+check that. Engine changes go into the template (and `TIMING` in `core/config.js` follows).
+
+What v6 fixes over v5 (all measured on robot 1 with 50 Hz telemetry, see `HANDOFF.md`):
+- **a move ends on the SUM of the two wheels' pulses**, not when each wheel reaches its own
+  target — in a spin the loaded (backward) wheel finished late and the free wheel was dragged
+  +900 pulses (≈ +120° per 3 spins);
+- **load compensation**: the PWM→speed line is for an unloaded wheel; the loop raises/lowers a
+  common offset 1 PWM per 10 ms until the wheels run at the commanded speed (a spin needs
+  ~90 PWM on the backward wheel where a straight needs 55);
+- **slow zone + real brake + correction**: the last 100 mm are crawled at 150 mm/s (short-brake
+  pulses if faster), the drive cuts `RAFUTAS_IMP` early, the brake is a speed-proportional
+  counter-PWM ending in TB6612 short-brake (PWM 1) until both wheels stand, and a residual over
+  `TURES_IMP` (16 pulses ≈ 3 mm / 3°) is crept back. Result on robot 1: 1 m ends within
+  ±10 pulses, 3 spins within ±14 pulses of the target (v5: +150 / +900).
 
 Robots whose `robots.json` calibration is `null` (2–5 today) are refused with an error that
 says to run `MERESI_MENET.md`. Robot 1's numbers are never substituted for them.
@@ -162,7 +177,12 @@ node tools/firmware.js upload keret COM5 # first time over USB
 
 Firmware v6 counts encoder pulses exactly like the camp framework (both edges of A → 408/rev), so
 the measured `MM_PER_IMP` values carry over; robot 1's motor/encoder signs (`N,-1,1,-1,1`) are
-the defaults. Requires `arduino-cli` and the `esp32:esp32` core (prerequisites in `tools/firmware.js`).
+the defaults. **v7** adds a 5th field to `N` — `N,encL,encR,motL,motR,csere` — for a robot whose
+two TB6612 PWM leads and two encoder plugs are crossed (robot 2: one motor alone would not turn at all);
+with `csere=1` the firmware swaps them in software. `N,AUTO` now pushes harder (PWM 120, 500 ms),
+restores the old signs when it fails, and says when the symptom looks like that cross-wiring.
+The header's **▶ Start mind** sends `T` to every connected robot at once; the show's beat clock keeps them
+in step from there. Requires `arduino-cli` and the `esp32:esp32` core (prerequisites in `tools/firmware.js`).
 **As of 2026-09-12 the robots still run the CAMP framework** (they answer `R,10` with
 `T,<millis>,s1..s5,encB,encJ,pwmB,pwmJ,poz,?,mV,?` lines). The Muszerfal charts work with that
 too, but Start/L/H and — crucially — our Bluetooth OTA do not: the camp `F` handshake is
@@ -179,9 +199,11 @@ connected robot runs ("saját keret" / "TÁBORI keret"). Our `L`/`H` commands av
 3. **Block 2 is templated, not verbatim.** The brief lists blocks 1–5 as verbatim but also
    asks for block 2 to be filled from `robots.json`; the latter wins. Block 1's `#define
    ROBOT` is templated for the same reason.
-4. **Timing constants** (`230 mm/s`, `70 ms` brake, `200 ms` settle, `20 s` timeout) are
-   read from block 3 of the template by a test, plus an **assumed 300 ms ramp overhead** per
-   primitive and a 1.5 safety factor. Spin time uses the nominal 143 mm track for every robot.
+4. **Timing constants** (`300 mm/s` cruise, last `100 mm` at `150 mm/s`, up to `400 ms` brake,
+   `200 ms` settle, `20 s` timeout) are read from block 3 of the template by a test, plus a
+   300 ms correction budget, a 200 ms ramp overhead per primitive and a 1.5 safety factor
+   (measured 2026-09-13: 1 m in 3.7 s, 3 spins in 5.9 s). Spin time uses the nominal 143 mm
+   track for every robot.
 5. **Primitive values are quantised** to 0.1 cm / 0.1° in the compiler, so the simulated
    pose and the emitted number are the same number. A goto therefore lands within 0.5 mm
    of its target; the next goto starts from the quantised pose, so nothing accumulates.
@@ -210,7 +232,7 @@ connected robot runs ("saját keret" / "TÁBORI keret"). Our `L`/`H` commands av
       (2026-09-12: robot 1 flashed over USB from the Kod tab, then OTA verified over USB and over
       Bluetooth with firmware v4 -- see transport/README.md for the two buffering fixes that took.)
 - [x] Loading `data/example-show.json` renders five robots through 10 beats.
-- [x] Emitting produces `SHOW_robot1.txt`; blocks 3–8 verbatim (tested), g++ syntax-checked
+- [x] Emitting produces `SHOW_robot1.txt`; blocks 3–8 verbatim from the template (tested), g++ syntax-checked
       against the framework stub. **Not** compiled with the Arduino toolchain — that needs
       the web IDE.
 - [x] Sending robots 2 and 3 to the same point yields

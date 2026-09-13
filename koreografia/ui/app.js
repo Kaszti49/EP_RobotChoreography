@@ -124,6 +124,23 @@ $('btnConnect').addEventListener('click', async () => {
   renderLink();
 });
 
+// T to every connected robot at once. The show is a shared beat clock
+// (each beat's lepes_var waits out its slot), so robots that receive T
+// together stay in step; the Bluetooth sends are a few ms apart.
+$('btnStartAll').addEventListener('click', async () => {
+  const ids = serial.connectedIds();
+  if (!ids.length) { setStatus('nincs csatlakoztatott robot', 'error'); return; }
+  try {
+    // an idle Bluetooth SPP link delivers its first packet ~0.5 s late
+    // (2026-09-13: robot 1 started half a second after robot 2), so wake
+    // every link with the firmware's no-op X first, then send T together
+    await serial.broadcast('X');
+    await new Promise((r) => setTimeout(r, 300));
+    await serial.broadcast('T');
+    setStatus(`Start: robot ${ids.join(', ')}`, 'ok');
+  } catch (e) { log(e.message); setStatus(e.message, 'error'); }
+});
+
 $('btnStopAll').addEventListener('click', async () => {
   try { await serial.broadcast('S'); } catch (e) { log(e.message); }
 });
@@ -183,6 +200,10 @@ async function loadShowUrl(url) {
 const loadExample = () => loadShowUrl('../data/example-show.json');
 
 $('btnExample').addEventListener('click', loadExample);
+// robot 1's floor test (1 m out and back, 3 spins each way) -- the same block 6 as SHOW_robot1.txt
+$('btnTest').addEventListener('click', () => loadShowUrl('../data/teszt-1m-3kor.json'));
+// two robots side by side: 1 m out, one spin each way, 1 m back -- for "Start mind"
+$('btnSync').addEventListener('click', () => loadShowUrl('../data/szinkron-teszt.json'));
 
 $('fileInput').addEventListener('change', async (e) => {
   const file = e.target.files[0];
@@ -394,36 +415,49 @@ loadShowUrl(params.get('show') || '../data/example-show.json')
 const startTab = params.get('tab') || localStorage.getItem('koreografia.tab');
 if (startTab && startTab !== 'koreo') switchTab(startTab);
 
-// A reload loses the link but not the grant: probe the ports granted earlier
-// (Bluetooth ones first) with P and keep the first that answers like a robot.
-// One robot at a time for now -- it becomes the selected robot.
+// A reload loses the link but not the grant: probe EVERY port granted earlier
+// (Bluetooth ones first) with P. A robot that answers is filed under the id
+// its Bluetooth name says (P,...,TaborRobot-<n>,... -- set with B,<n>); an
+// unnamed one (TaborRobot-0) takes the selected robot's id if that is still
+// free, else the next free id. So name the robots before running several.
 async function autoConnect() {
   const ports = await WebSerialTransport.grantedPorts();
   if (!ports.length) return;
-  const id = activeRobot();
   ports.sort((p, q) => Boolean(q.getInfo().bluetoothServiceClassId) - Boolean(p.getInfo().bluetoothServiceClassId));
-  setStatus(`robot ${id}: automatikus csatlakozás (${ports.length} ismert port)…`);
+  setStatus(`automatikus csatlakozás (${ports.length} ismert port)…`);
+  const found = [];
+  let temp = 900;
   for (const port of ports) {
+    const tid = temp++;
     try {
-      await Promise.race([serial.connect(id, port), new Promise((_, rej) => setTimeout(() => rej(new Error('nem nyílt meg 6 s alatt')), 6000))]);
-      await serial.send(id, 'P');
+      await Promise.race([serial.connect(tid, port), new Promise((_, rej) => setTimeout(() => rej(new Error('nem nyílt meg 6 s alatt')), 6000))]);
+      await serial.send(tid, 'P');
       const t0 = Date.now();
+      let name = null;
       while (Date.now() - t0 < 2500) {
-        const line = await serial.nextLine(id, 2500 - (Date.now() - t0)).catch(() => null);
+        const line = await serial.nextLine(tid, 2500 - (Date.now() - t0)).catch(() => null);
         if (line === null) break;
-        if (line.startsWith('P,')) {
-          setStatus(`robot ${id}: automatikusan csatlakozva`, 'ok');
-          renderLink();
-          return;
-        }
+        if (line.startsWith('P,')) { name = line.split(',')[2] ?? ''; break; }
       }
-      await serial.disconnect(id);
+      if (name === null) { await serial.disconnect(tid); continue; }
+      const m = name.match(/^TaborRobot-(\d+)$/);
+      let id = m && Number(m[1]) > 0 ? Number(m[1]) : 0;
+      if (!id || serial.connectedIds().includes(id)) {
+        id = [activeRobot(), ...state.robots].find((r) => !serial.connectedIds().includes(r)) ?? 0;
+      }
+      if (!id) { await serial.disconnect(tid); continue; }
+      serial.reassign(tid, id);
+      dashboard.forget(tid);
+      await serial.send(id, 'P'); // again, under the final id (firmware pill, log)
+      found.push(`${id}${m ? '' : ' (névtelen)'}`);
+      log(`robot ${id}: automatikusan csatlakozva (${name})`);
     } catch (e) {
       log(`automatikus csatlakozás: egy port nem jó (${e.message})`);
-      await serial.disconnect(id).catch(() => {});
+      await serial.disconnect(tid).catch(() => {});
     }
   }
-  setStatus('Nincs válaszoló robot az ismert portokon -- Csatlakozás kézzel', 'warning');
+  if (found.length) setStatus(`automatikusan csatlakozva: robot ${found.join(', ')}`, 'ok');
+  else setStatus('Nincs válaszoló robot az ismert portokon -- Csatlakozás kézzel', 'warning');
   renderLink();
 }
 autoConnect().catch((e) => log(`automatikus csatlakozás: ${e.message}`));

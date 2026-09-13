@@ -30,7 +30,10 @@
 //    L,?              a mentett kalibracio (ugyanabban a formaban)
 //    H                kerek-meres: mindket kerek 120 PWM 1 s-ig, valasz H,<encBal>,<encJobb>,<jobb/bal arany>
 //                     (L es H azert, mert a tabori keretben K es W mast jelent -- sebesseg-PI)
-//    N | N,AUTO | N,<encL>,<encR>,<motL>,<motR>   elojelek (NVS-be mentve)
+//    N | N,AUTO | N,<encL>,<encR>,<motL>,<motR>[,<csere>]   elojelek (NVS-be mentve)
+//                     csere=1: a ket PWM-vezetek ES a ket enkoder-csatlakozo keresztben
+//                     van (robot 2, 2026-09-13): a keret szoftverbol cserel. Tunet:
+//                     egy motor egyedul (M,120,0) nem forog, ketten igen.
 //    B,<n> | B,<nev>  Bluetooth-nev (TaborRobot-<n> / Tabor-<nev>), utana ujraindul
 //    F,<meret>[,<md5>] firmware-frissites -- SAJAT protokoll, lasd lent
 //
@@ -48,7 +51,7 @@
 #include <Preferences.h>
 #include <Update.h>
 
-#define KERET_VERZIO "keret-ep v6"
+#define KERET_VERZIO "keret-ep v7"
 
 // ---------------------------------------------------------------------
 //  Labak
@@ -97,6 +100,7 @@ Preferences nvs;
 // szamit; a Muszerfal "Robot beallitasa" (N,... / N,AUTO) az NVS-be ment.
 static int  elojelEncBal = -1, elojelEncJobb = 1;
 static int  elojelMotBal = -1, elojelMotJobb = 1;
+static int  csere = 0;                 // 1 = PWM-vezetekek + enkoderek keresztben (lasd N)
 static String btNev = "TaborRobot-0";
 
 static TaskHandle_t feladatTask = NULL;
@@ -121,11 +125,14 @@ void vezerles();
 //  Az elojel-konvencio a regi maradt (A siet -> +), igy az NVS-ben
 //  mentett N,... elojelek is ervenyesek.
 // ---------------------------------------------------------------------
-void IRAM_ATTR isrEncBal() {
-  encBal += (digitalRead(PIN_ENC_BAL_A) != digitalRead(PIN_ENC_BAL_B) ? 1 : -1) * elojelEncBal;
+//  csere=1 eseten a 25/26-os labon a JOBB kerek enkodere van, a 27/14-esen a bal.
+void IRAM_ATTR isrEnc25() {
+  int d = (digitalRead(PIN_ENC_BAL_A) != digitalRead(PIN_ENC_BAL_B)) ? 1 : -1;
+  if (csere) encJobb += d * elojelEncJobb; else encBal += d * elojelEncBal;
 }
-void IRAM_ATTR isrEncJobb() {
-  encJobb += (digitalRead(PIN_ENC_JOBB_A) != digitalRead(PIN_ENC_JOBB_B) ? 1 : -1) * elojelEncJobb;
+void IRAM_ATTR isrEnc27() {
+  int d = (digitalRead(PIN_ENC_JOBB_A) != digitalRead(PIN_ENC_JOBB_B)) ? 1 : -1;
+  if (csere) encBal += d * elojelEncBal; else encJobb += d * elojelEncJobb;
 }
 
 void enkoderNullaz() {
@@ -164,8 +171,9 @@ void motor(int bal, int jobb) {
   utolsoBal = bal;
   utolsoJobb = jobb;
   digitalWrite(PIN_STBY, (bal == 0 && jobb == 0) ? LOW : HIGH);
-  egyMotor(PIN_PWMA, PIN_AIN1, PIN_AIN2, bal * elojelMotBal);
-  egyMotor(PIN_PWMB, PIN_BIN1, PIN_BIN2, jobb * elojelMotJobb);
+  // csere=1: a bal motor sebessege a PWMB labon jut el hozza, a jobbe a PWMA-n
+  egyMotor(csere ? PIN_PWMB : PIN_PWMA, PIN_AIN1, PIN_AIN2, bal * elojelMotBal);
+  egyMotor(csere ? PIN_PWMA : PIN_PWMB, PIN_BIN1, PIN_BIN2, jobb * elojelMotJobb);
 }
 
 // ---------------------------------------------------------------------
@@ -284,6 +292,7 @@ static void beallitasBetolt() {
   elojelEncJobb = nvs.getInt("encR", elojelEncJobb);
   elojelMotBal  = nvs.getInt("motL", elojelMotBal);
   elojelMotJobb = nvs.getInt("motR", elojelMotJobb);
+  csere         = nvs.getInt("csere", csere) ? 1 : 0;
   btNev = nvs.getString("nev", "TaborRobot-0");
   if (nvs.getBytesLength("kalF") == sizeof(kalFeher)) nvs.getBytes("kalF", kalFeher, sizeof(kalFeher));
   if (nvs.getBytesLength("kalB") == sizeof(kalFekete)) nvs.getBytes("kalB", kalFekete, sizeof(kalFekete));
@@ -296,6 +305,7 @@ static void beallitasMent() {
   nvs.putInt("encR", elojelEncJobb);
   nvs.putInt("motL", elojelMotBal);
   nvs.putInt("motR", elojelMotJobb);
+  nvs.putInt("csere", csere);
   nvs.putString("nev", btNev);
   nvs.putBytes("kalF", kalFeher, sizeof(kalFeher));
   nvs.putBytes("kalB", kalFekete, sizeof(kalFekete));
@@ -347,18 +357,30 @@ static void kerekMeres(Stream& s) {
 
 static String elojelSor() {
   return "N," + String(elojelEncBal) + "," + String(elojelEncJobb) + ","
-       + String(elojelMotBal) + "," + String(elojelMotJobb);
+       + String(elojelMotBal) + "," + String(elojelMotJobb) + "," + String(csere);
 }
 
-// egy motor elore, es megnezzuk, merre szamol a hozza tartozo enkoder
+// egy motor elore, es megnezzuk, merre szamol a hozza tartozo enkoder.
+// Sikertelen meres eseten a regi elojelek maradnak (v6 az 1,1-et hagyta bent).
 static void elojelAuto() {
   if (feladatTask) { uzenet("!!! elobb S"); return; }
+  int regiB = elojelEncBal, regiJ = elojelEncJobb;
   elojelEncBal = 1; elojelEncJobb = 1;
-  enkoderNullaz(); motor(90, 0); delay(400); motor(0, 0); delay(300);
+  enkoderNullaz(); motor(120, 0); delay(500); motor(0, 0); delay(300);
   long b = encBal, jKereszt = encJobb;
-  enkoderNullaz(); motor(0, 90); delay(400); motor(0, 0); delay(300);
+  enkoderNullaz(); motor(0, 120); delay(500); motor(0, 0); delay(300);
   long j = encJobb, bKereszt = encBal;
-  if (labs(b) < 5 || labs(j) < 5) { uzenet("!!! N,AUTO: az enkoder nem szamol"); return; }
+  if (labs(b) < 5 && labs(j) < 5 && labs(jKereszt) < 5 && labs(bKereszt) < 5) {
+    elojelEncBal = regiB; elojelEncJobb = regiJ;
+    uzenet(String("!!! N,AUTO: egy motor egyedul nem forog -- a PWM-vezetekek keresztben? probald: N,")
+           + regiB + "," + regiJ + "," + elojelMotBal + "," + elojelMotJobb + "," + (csere ? 0 : 1));
+    return;
+  }
+  if (labs(b) < 5 || labs(j) < 5) {
+    elojelEncBal = regiB; elojelEncJobb = regiJ;
+    uzenet("!!! N,AUTO: az enkoder nem szamol (bal " + String(b) + ", jobb " + String(j) + ")");
+    return;
+  }
   if (labs(jKereszt) > labs(b) / 2 || labs(bKereszt) > labs(j) / 2) {
     uzenet("!!! N,AUTO: a motor es az enkoder KERESZTBEN van kotve (G-kabelek)");
   }
@@ -533,6 +555,7 @@ static void parancs(String sor, Stream& s) {
       elojelEncJobb = mezo(sor, 2, 1) < 0 ? -1 : 1;
       elojelMotBal  = mezo(sor, 3, 1) < 0 ? -1 : 1;
       elojelMotJobb = mezo(sor, 4, 1) < 0 ? -1 : 1;
+      csere         = mezo(sor, 5, csere) ? 1 : 0;
       beallitasMent();
       s.println("mentve: " + elojelSor());
       break;
@@ -587,8 +610,8 @@ void setup() {
 
   pinMode(PIN_ENC_BAL_A, INPUT_PULLUP);  pinMode(PIN_ENC_BAL_B, INPUT_PULLUP);
   pinMode(PIN_ENC_JOBB_A, INPUT_PULLUP); pinMode(PIN_ENC_JOBB_B, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(PIN_ENC_BAL_A), isrEncBal, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(PIN_ENC_JOBB_A), isrEncJobb, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(PIN_ENC_BAL_A), isrEnc25, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(PIN_ENC_JOBB_A), isrEnc27, CHANGE);
 
   analogReadResolution(12);
   analogSetPinAttenuation(PIN_AKKU, ADC_11db);

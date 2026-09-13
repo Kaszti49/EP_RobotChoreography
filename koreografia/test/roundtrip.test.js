@@ -80,7 +80,7 @@ test('a left goto and a right goto end where the world coordinates say', () => {
     robots: [{ id: 1, start: { x: 2000, y: 1500, theta: 0 } }],
     beats: [
       { name: 'left', duration_ms: 12000, moves: { 1: { type: 'goto', x: 2000, y: 2000, face: 180 } } },   // +Y = CCW from +X
-      { name: 'right', duration_ms: 12000, moves: { 1: { type: 'goto', x: 2000, y: 1000, face: 0 } } },     // -Y
+      { name: 'right', duration_ms: 14000, moves: { 1: { type: 'goto', x: 2000, y: 1000, face: 0 } } },     // -Y
       { name: 'tiny', duration_ms: 12000, moves: { 1: { type: 'goto', x: 2000, y: 1000, face: 350 } } },     // 350 -> -10 -> jobbra 10
     ],
   };

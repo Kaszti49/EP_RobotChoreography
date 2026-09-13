@@ -1,0 +1,20 @@
+{
+  "_comment": [
+    "Ket robot egyszerre (2026-09-13): egymas mellett 1,7 m-re, 1 m elore, 1 kor balra, 1 kor jobbra, 1 m hatra -- oda kell visszaerniuk, ahonnan indultak.",
+    "Koreografia ful: Szinkron-teszt betoltese -> robot 1 -> Kod fulre -> Fordit + Feltolt; robot 2 ugyanigy -> fejlec: Start mind."
+  ],
+  "field": { "width_mm": 4000, "height_mm": 3000, "margin_mm": 250 },
+  "robots": [
+    { "id": 1, "start": { "x": 1150, "y": 1000, "theta": 90 } },
+    { "id": 2, "start": { "x": 2850, "y": 1000, "theta": 90 } }
+  ],
+  "beats": [
+    { "name": "elore 1 m",   "duration_ms": 8000, "moves": { "1": { "type": "primitive", "op": "elore_cm",   "value": 100 }, "2": { "type": "primitive", "op": "elore_cm",   "value": 100 } } },
+    { "name": "all",         "duration_ms": 1000, "moves": {} },
+    { "name": "1 kor balra", "duration_ms": 6000, "moves": { "1": { "type": "primitive", "op": "balra_kor",  "value": 1 },   "2": { "type": "primitive", "op": "balra_kor",  "value": 1 } } },
+    { "name": "all",         "duration_ms": 1000, "moves": {} },
+    { "name": "1 kor jobbra","duration_ms": 6000, "moves": { "1": { "type": "primitive", "op": "jobbra_kor", "value": 1 },   "2": { "type": "primitive", "op": "jobbra_kor", "value": 1 } } },
+    { "name": "all",         "duration_ms": 1000, "moves": {} },
+    { "name": "hatra 1 m",   "duration_ms": 8000, "moves": { "1": { "type": "primitive", "op": "hatra_cm",   "value": 100 }, "2": { "type": "primitive", "op": "hatra_cm",   "value": 100 } } }
+  ]
+}

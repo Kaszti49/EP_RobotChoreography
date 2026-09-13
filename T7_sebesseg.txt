@@ -1,0 +1,142 @@
+// =====================================================================
+//  T7 -- PWM / SEBESSEG EGYENES
+//  Ez teszi lehetove, hogy a sebesseget EGY helyen allitsuk be, es
+//  mind az ot robot ugyanolyan gyorsan menjen.
+// =====================================================================
+//
+//  MIERT KELL?
+//    A PWM robotonkent MAST jelent: mas motor, mas surlodas, mas akku.
+//    PWM 70 az egyik roboton 230 mm/s, a masikon 260. Ha PWM-ben adjuk
+//    meg a show sebesseget, az ot robot kulonbozo gyorsan megy.
+//    Ezert a show mm/s-ban all, es minden robot a SAJAT egyenesevel
+//    valtja at:
+//
+//        PWM = PWM_PER_MMS * v + PWM_NULLA
+//
+//    Ez a vazlat ezt a ket szamot meri meg, es kiirja bemasolhato sorban.
+//
+//  HELY
+//    ~2,5 m egyenes szakasz. A robot minden PWM-nel elore megy egy
+//    kicsit, majd UGYANANNYIT vissza, tehat nagyjabol a helyen marad.
+//
+//  ELOKESZULET
+//    - FRISS AKKU. Ez a meres kozvetlenul a feszultseget merte, ha az
+//      akku fogy. Ellenorizd a V paranccsal, 8 V folott legyen.
+//    - Ugyanaz a padlo, amin a show lesz.
+//    - Ne nyulj hozza futas kozben. Kb. 40 masodperc.
+//
+//  AMIT CSINALNI KELL
+//    Semmit. A vegen kiirja a ket szamot -- azt masold a SHOW 2. blokkjaba.
+// =====================================================================
+
+
+// ============ 1. AMIT ALLITHATSZ ============
+
+const float MM_PER_IMP_BAL  = 0.34582;   // a robot SAJAT T1 erteke
+const float MM_PER_IMP_JOBB = 0.34392;
+
+const int T7_LISTA[4] = { 60, 80, 100, 120 };   // ezeken a PWM-eken merunk
+const int T7_IDO      = 900;                    // egy meres hossza (ms)
+const int T7_SZUNET   = 500;
+
+
+// ============ 2. EGY MERES ============
+//  Visszaadja az atlagos sebesseget mm/s-ban (a ket kerek atlaga).
+
+float t7_meres(int pwm, int irany) {
+  motor(0, 0);
+  varj(T7_SZUNET);
+  enkoderNullaz();
+
+  unsigned long t0 = millis();
+  motor(irany * pwm, irany * pwm);
+  varj(T7_IDO);
+  motor(0, 0);
+  unsigned long dt = millis() - t0;
+
+  long b = encBal;  if (b < 0) b = -b;
+  long j = encJobb; if (j < 0) j = -j;
+
+  float mmB = (float)b * MM_PER_IMP_BAL;
+  float mmJ = (float)j * MM_PER_IMP_JOBB;
+  float v   = (dt > 0) ? ((mmB + mmJ) * 0.5 * 1000.0 / (float)dt) : 0.0;
+
+  uzenet("   PWM " + String(pwm) + (irany > 0 ? " elore" : " hatra")
+         + " -> " + String(v, 0) + " mm/s   (bal " + String(b)
+         + " jobb " + String(j) + " imp)");
+  return v;
+}
+
+
+// ============ 3. A FUTAS ============
+
+void indulas() {
+  motor(0, 0);
+  uzenet("=== T7 -- PWM/sebesseg egyenes ===");
+  uzenet("Kb. 40 mp. Elore-hatra parban megy, a helyen marad.");
+  uzenet("NE nyulj hozza. Indulas 3 mp mulva.");
+  varj(3000);
+
+  float x[4];
+  float y[4];
+  int   n = 4;
+
+  for (int i = 0; i < n; i++) {
+    int pwm = T7_LISTA[i];
+    float ve = t7_meres(pwm, +1);
+    float vh = t7_meres(pwm, -1);
+    x[i] = (float)pwm;
+    y[i] = (ve + vh) * 0.5;     // a ket irany atlaga
+    uzenet("PWM " + String(pwm) + " ATLAG: " + String(y[i], 0) + " mm/s"
+           + "   (elore " + String(ve, 0) + ", hatra " + String(vh, 0)
+           + ", elteres " + String((ve - vh) * 100.0 / ((ve + vh) * 0.5), 0) + " %)");
+  }
+
+  motor(0, 0);
+
+  // --- legkisebb negyzetes illesztes:  v = a*PWM + b ------------------
+  float sx = 0, sy = 0;
+  for (int i = 0; i < n; i++) { sx += x[i]; sy += y[i]; }
+  float mx = sx / n, my = sy / n;
+
+  float szam = 0, nev = 0;
+  for (int i = 0; i < n; i++) {
+    szam += (x[i] - mx) * (y[i] - my);
+    nev  += (x[i] - mx) * (x[i] - mx);
+  }
+
+  uzenet("=========== T7 EREDMENY ===========");
+
+  if (nev < 0.001 || szam <= 0.001) {
+    uzenet("!!! Az illesztes nem sikerult -- a sebesseg nem nott a PWM-mel.");
+    uzenet("    Nezd meg az akkut (V) es hogy nem akadt-e el a robot.");
+    return;
+  }
+
+  float a = szam / nev;          // mm/s egy PWM-re
+  float b = my - a * mx;
+
+  uzenet("v = " + String(a, 4) + " * PWM + " + String(b, 2) + "  (mm/s)");
+
+  // amit a SHOW var: PWM = PWM_PER_MMS * v + PWM_NULLA
+  float pps = 1.0 / a;
+  float pn  = -b / a;
+
+  uzenet("--> MASOLD A SHOW 2. BLOKKJABA:");
+  uzenet("const float PWM_PER_MMS = " + String(pps, 5) + ";");
+  uzenet("const float PWM_NULLA   = " + String(pn, 2) + ";");
+
+  uzenet("--- ellenorzes ---");
+  uzenet("  200 mm/s -> PWM " + String((int)(pps * 200.0 + pn + 0.5)));
+  uzenet("  230 mm/s -> PWM " + String((int)(pps * 230.0 + pn + 0.5)));
+  uzenet("  260 mm/s -> PWM " + String((int)(pps * 260.0 + pn + 0.5)));
+  uzenet("Ha ezek 45 es 200 koze esnek, jo a meres.");
+  uzenet("=========== T7 VEGE ===========");
+}
+
+
+// ============ 4. VEZERLES ============
+
+void vezerles() {
+  motor(0, 0);
+}

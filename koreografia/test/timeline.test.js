@@ -8,14 +8,17 @@ import { tinyShow, loadExample } from './helpers.js';
 
 test('duration: drive and spin times follow the engine constants', () => {
   const drive = { op: OPS.FORWARD, value: 100 };
-  assert.ok(Math.abs(motionMs(drive) - 1000 / 230 * 1000) < 1e-9);
+  assert.ok(Math.abs(motionMs(drive) - (900 / 300 + 100 / 150) * 1000) < 1e-9, 'last 100 mm at the slow speed');
   const spin = { op: OPS.RIGHT, value: 360 };
-  assert.ok(Math.abs(motionMs(spin) - Math.PI * 143 / 230 * 1000) < 1e-9);
-  const overhead = TIMING.brake_ms + TIMING.settle_ms + TIMING.ramp_ms;
+  const arc = Math.PI * 148;
+  assert.ok(Math.abs(motionMs(spin) - ((arc - 100) / 300 + 100 / 150) * 1000) < 1e-9);
+  const tiny = { op: OPS.FORWARD, value: 5 };
+  assert.ok(Math.abs(motionMs(tiny) - 50 / 150 * 1000) < 1e-9, 'shorter than the slow zone: all slow');
+  const overhead = TIMING.brake_ms + TIMING.settle_ms + TIMING.correction_ms + TIMING.ramp_ms;
   assert.ok(Math.abs(estimatePrimitiveMs(drive) - (motionMs(drive) + overhead)) < 1e-9);
   assert.equal(estimateSequenceMs([]), 0);
-  assert.ok(!exceedsMoveTimeout({ op: OPS.FORWARD, value: 400 }));
-  assert.ok(exceedsMoveTimeout({ op: OPS.FORWARD, value: 500 }));
+  assert.ok(!exceedsMoveTimeout({ op: OPS.FORWARD, value: 550 }));   // 5.4 s + 0.67 s < 20 s
+  assert.ok(exceedsMoveTimeout({ op: OPS.FORWARD, value: 600 }));    // 19.67 s + 0.67 s > 20 s
 });
 
 test('schedule runs primitives back to back from t=0', () => {
@@ -63,7 +66,7 @@ test('stateAt on a hold beat is constant', () => {
 
 test('locate maps global time to beat and clamps', () => {
   const c = compileShow(loadExample());
-  assert.equal(showLengthMs(c), 46000);
+  assert.equal(showLengthMs(c), 47500);
   assert.equal(locate(c, 0).beat.index, 0);
   assert.equal(locate(c, 4999).beat.index, 0);
   assert.equal(locate(c, 5000).beat.index, 1);

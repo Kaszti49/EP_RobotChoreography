@@ -1,5 +1,14 @@
+# SHOW_robot1 — robot 1 show sketch (v6 engine)
+
+Copy of `SHOW_robot1.txt` as of 2026-09-13 (the file robot 1 was tuned with: track 148.3 mm, PWM_MIN 35,
+speed line 0.145 / 9.30). Floor result: 1 m within millimetres, 3 spins within a few degrees.
+The site regenerates this from `koreografia/templates/show_template.txt` + `koreografia/data/robots.json`
+(Koreográfia tab → *Teszt betöltése* → *→ Kód fülre*); the template has since gained a 300 ms soft start
+(`INDULAS_MS`) that this copy does not have yet.
+
+```cpp
 // =====================================================================
-//  SHOW -- ROBOT @@ROBOT@@   (v6)
+//  SHOW -- ROBOT 1   (v6)
 //  Enkoderes koreografia vonal nelkul, kerekenkent szinkronizalva.
 //
 //  EZ A FAJL KET RESZBOL ALL:
@@ -72,7 +81,7 @@
 
 // ============ 1. MELYIK ROBOT VAGYOK ============
 
-#define ROBOT @@ROBOT@@
+#define ROBOT 1
 
 
 // =====================================================================
@@ -81,25 +90,25 @@
 // =====================================================================
 
 // --- T1 tolasi teszt + T5 hajtott egyenes ---
-const float MM_PER_IMP_BAL  = @@MM_PER_IMP_BAL@@;
-const float MM_PER_IMP_JOBB = @@MM_PER_IMP_JOBB@@;
+const float MM_PER_IMP_BAL  = 0.34582;
+const float MM_PER_IMP_JOBB = 0.34392;
 
 // --- T7 sebessegmeres: PWM = PWM_PER_MMS * v + PWM_NULLA ---
 //     ELOZETES ertek a T2 D-fazisabol illesztve. Futtasd a T7-et
 //     es ird felul -- ez a ket szam teszi egyformava az ot robotot.
-const float PWM_PER_MMS = @@PWM_PER_MMS@@;
-const float PWM_NULLA   = @@PWM_NULLA@@;
+const float PWM_PER_MMS = 0.14500;
+const float PWM_NULLA   = 9.30;
 
 // --- porges: HANGOLT szam, nem fizikai nyomtav (a csuszast is tartalmazza)
-const float NYOMTAV_MM  = @@NYOMTAV_MM@@;
-const float PORGES_TRIM = @@PORGES_TRIM@@;    // tul sokat porog -> 0,98 | keveset -> 1,02
+const float NYOMTAV_MM  = 148.3;
+const float PORGES_TRIM = 1.00;    // tul sokat porog -> 0,98 | keveset -> 1,02
 
 // --- egyenes futas arany-finomitasa (1,000 = nincs javitas)
 //     farat BALRA tolja -> 0,996 | JOBBRA -> 1,004 | egy lepes ~4 mm/meter
-const float BAL_TRIM = @@BAL_TRIM@@;
+const float BAL_TRIM = 0.996;
 
 // --- holtsav (T2 C fazis): bal 20/40, jobb 25/20 -> a legrosszabb 40
-const int PWM_MIN = @@PWM_MIN@@;            // ez ala semmilyen szamitas nem viheti
+const int PWM_MIN = 35;            // ez ala semmilyen szamitas nem viheti
 
 
 // =====================================================================
@@ -121,8 +130,6 @@ const int   FEK_PWM        = 60;     // aktiv fek: ellen-PWM, amig a kerek
 const int   FEK_MAX_MS     = 400;    //   meg nem all, legfeljebb ennyi ms
 const int   TURES_IMP      = 16;     // a ket kerek OSSZESEN ennyin belul kesz
 const int   JAVITAS_MAX    = 2;      // legfeljebb ennyi utanigazitas
-const int   INDULAS_MS     = 300;    // lagy inditas: ennyi ido alatt fut fel a
-                                     //   PWM (allasbol ugorva a kerek kiporog)
 const int   PWM_PLAFON     = 200;
 
 const unsigned long IDOKORLAT = 20000;
@@ -200,7 +207,7 @@ void fekez(int irB, int irJ) {
 //  A korrekcio +-alap-ig mehet (nem alap/2-ig): porgesben az elore
 //  halado kerek terheletlen, 50 vs 105 PWM mellett is az volt a gyorsabb.
 //
-//  Lefutas: lagy inditas (INDULAS_MS) -> teljes sebesseg -> az utolso LASSITAS_MM-en LASSU_MM_S-sel
+//  Lefutas: teljes sebesseg -> az utolso LASSITAS_MM-en LASSU_MM_S-sel
 //  kuszas (amelyik kerek gyorsabb ennel, az addig rovidzar-feket kap)
 //  -> RAFUTAS_IMP-pel a cel elott hajtas le, aktiv fek -> ha az osszeg
 //  TURES_IMP-nel tobbel ter el, utanigazitas (mindket kerek a hiba
@@ -245,16 +252,9 @@ void mozgas(long cb, long cj, int pwm) {
     float vKell = lassu ? vLassu : vCel;
     int   alapNyers = lassu ? PWM_MIN : pwm;
 
-    // lagy inditas: az elso INDULAS_MS alatt a PWM egyenletesen fut fel
-    unsigned long eltelt = millis() - t0;
-    bool indul = eltelt < (unsigned long)INDULAS_MS;
-    if (indul) alapNyers = PWM_MIN + (int)((long)(alapNyers - PWM_MIN) * (long)eltelt / INDULAS_MS);
-
     // kozos terheles-ratartas a ket kerek egyuttes sebessege alapjan
-    // (felfutas alatt nem tanul: akkor meg szandekosan lassu)
     float vVan = (float)(vB + vJ) * 0.5;
-    if (indul) { /* tart */ }
-    else if (vVan < vKell * 0.9 && alapNyers + lokes < PWM_PLAFON) lokes++;
+    if (vVan < vKell * 0.9 && alapNyers + lokes < PWM_PLAFON) lokes++;
     else if (vVan > vKell * 1.1 && lokes > 0) lokes--;
     int alap = hatarol(alapNyers + lokes, PWM_MIN, PWM_PLAFON);
 
@@ -364,7 +364,13 @@ void jobbra_kor(float k) { porog_fok(+360.0 * k); }
 
 void koreografia() {
 
-@@KOREOGRAFIA@@
+  lepes_kezd();  elore_cm(100.0);      lepes_var(8000);    // [1 elore 1 m] -> (2000, 1800) 90.0 deg  r=127 mm
+  lepes_kezd();                        lepes_var(1000);    // [2 all] hold -> (2000, 1800) 90.0 deg  r=127 mm
+  lepes_kezd();  hatra_cm(100.0);      lepes_var(8000);    // [3 hatra 1 m] -> (2000, 800) 90.0 deg  r=297 mm
+  lepes_kezd();                        lepes_var(1000);    // [4 all] hold -> (2000, 800) 90.0 deg  r=297 mm
+  lepes_kezd();  balra_fok(1080.0);    lepes_var(16000);   // [5 3 kor balra] -> (2000, 800) 90.0 deg  r=297 mm
+  lepes_kezd();                        lepes_var(1000);    // [6 all] hold -> (2000, 800) 90.0 deg  r=297 mm
+  lepes_kezd();  jobbra_fok(1080.0);   lepes_var(16000);   // [7 3 kor jobbra] -> (2000, 800) 90.0 deg  r=297 mm
 
 }
 
@@ -402,3 +408,4 @@ void indulas() {
 void vezerles() {
   motor(0, 0);      // a koreografia az indulas()-ban fut le
 }
+```

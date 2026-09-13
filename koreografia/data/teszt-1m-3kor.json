@@ -1,0 +1,49 @@
+{
+  "_comment": [
+    "Robot 1 es 2 tesztje (2026-09-13): 1 m elore, 1 m hatra, 3 kor balra, 3 kor jobbra -- egymas mellett 1,2 m-re, egyszerre is futtathato.",
+    "Ugyanaz, mint a SHOW_robot1.txt 6. blokkja -- ezzel merjuk a motort (padlon: hova ert, mennyit fordult).",
+    "Koreografia ful: Teszt betoltese -> -> Kod fulre -> Fordit + Feltolt -> Muszerfal Start."
+  ],
+  "field": { "width_mm": 4000, "height_mm": 3000, "margin_mm": 250 },
+  "robots": [
+    { "id": 1, "start": { "x": 1400, "y": 800, "theta": 90 } },
+    { "id": 2, "start": { "x": 2600, "y": 800, "theta": 90 } }
+  ],
+  "beats": [
+    {
+      "name": "elore 1 m",
+      "duration_ms": 8000,
+      "moves": {
+        "1": { "type": "primitive", "op": "elore_cm", "value": 100 },
+        "2": { "type": "primitive", "op": "elore_cm", "value": 100 }
+      }
+    },
+    { "name": "all", "duration_ms": 1000, "moves": {} },
+    {
+      "name": "hatra 1 m",
+      "duration_ms": 8000,
+      "moves": {
+        "1": { "type": "primitive", "op": "hatra_cm", "value": 100 },
+        "2": { "type": "primitive", "op": "hatra_cm", "value": 100 }
+      }
+    },
+    { "name": "all", "duration_ms": 1000, "moves": {} },
+    {
+      "name": "3 kor balra",
+      "duration_ms": 16000,
+      "moves": {
+        "1": { "type": "primitive", "op": "balra_kor", "value": 3 },
+        "2": { "type": "primitive", "op": "balra_kor", "value": 3 }
+      }
+    },
+    { "name": "all", "duration_ms": 1000, "moves": {} },
+    {
+      "name": "3 kor jobbra",
+      "duration_ms": 16000,
+      "moves": {
+        "1": { "type": "primitive", "op": "jobbra_kor", "value": 3 },
+        "2": { "type": "primitive", "op": "jobbra_kor", "value": 3 }
+      }
+    }
+  ]
+}

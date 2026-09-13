@@ -8,7 +8,7 @@
   "scripts": {
     "test": "node --test",
     "build": "node tools/build.js data/example-show.json out",
-    "template": "node tools/make-template.js",
+    "template-check": "node tools/make-template.js",
     "serve": "node tools/serve.js"
   }
 }

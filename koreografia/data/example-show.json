@@ -40,7 +40,7 @@
     },
     {
       "name": "nez jobbra",
-      "duration_ms": 3000,
+      "duration_ms": 3500,
       "moves": {
         "1": { "type": "primitive", "op": "jobbra_fok", "value": 90 },
         "2": { "type": "primitive", "op": "jobbra_fok", "value": 90 },
@@ -51,7 +51,7 @@
     },
     {
       "name": "vissza nez",
-      "duration_ms": 3000,
+      "duration_ms": 3500,
       "moves": {
         "1": { "type": "primitive", "op": "balra_fok", "value": 90 },
         "2": { "type": "primitive", "op": "balra_fok", "value": 90 },
@@ -62,7 +62,7 @@
     },
     {
       "name": "hullam",
-      "duration_ms": 3000,
+      "duration_ms": 3500,
       "moves": {
         "1": { "type": "primitive", "op": "elore_cm", "value": 15 },
         "2": { "type": "primitive", "op": "hatra_cm", "value": 15 },

@@ -193,16 +193,50 @@ export class WebSerialTransport extends Transport {
   }
 
   /**
+   * Move an open link to another robot id (auto-connect opens a port under a
+   * temporary id, reads the robot's name from its P reply, then files it
+   * under the id the name says). No-op if toId is already connected.
+   */
+  reassign(fromId, toId) {
+    if (fromId === toId || this.links.has(toId)) return false;
+    const link = this.links.get(fromId);
+    const port = this.ports.get(fromId);
+    if (!link) return false;
+    this.links.delete(fromId);
+    this.ports.delete(fromId);
+    this.links.set(toId, link);
+    if (port) this.ports.set(toId, port);
+    return true;
+  }
+
+  /**
    * Upload a compiled firmware image (.bin from tools/firmware.js build)
    * over the open link, using ota.js. Resolves on F,OK; the robot reboots.
    */
   async uploadFirmware(robotId, bin, { onProgress } = {}) {
-    this.#link(robotId).lines.length = 0; // drop stale chatter
+    const current = this.#link(robotId);
+    current.lines.length = 0; // drop stale chatter
     const link = {
       sendLine: (text) => this.send(robotId, text),
       writeRaw: (bytes) => this.writeRaw(robotId, bytes),
       nextLine: (t) => this.nextLine(robotId, t),
     };
-    return otaUpload(link, bin, { onProgress });
+    const res = await otaUpload(link, bin, { onProgress });
+    // The robot reboots now. A Windows Bluetooth COM port does not always
+    // report that (2026-09-13: the read loop just sat there and every later
+    // send vanished), so do not wait for it: drop the dead link ourselves
+    // and go straight to the reconnect loop on the same granted port.
+    const port = this.ports.get(robotId);
+    if (this.links.get(robotId) === current && port) {
+      current.closing = true;
+      this.links.delete(robotId);
+      try { await current.reader?.cancel(); } catch { /* already closed */ }
+      try { current.writer.releaseLock(); } catch { /* already released */ }
+      await current.port.close().catch(() => {});
+      this.onLog(`robot ${robotId}: a robot ujraindul -- ujracsatlakozas...`);
+      this.onDisconnect(robotId);
+      this.#reconnect(robotId, port);
+    }
+    return res;
   }
 }

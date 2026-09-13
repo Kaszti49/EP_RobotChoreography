@@ -1,5 +1,15 @@
+# SHOW_robot2 — robot 2 show sketch (v6 engine, firmware v7)
+
+The sketch running on robot 2 as of 2026-09-13 (emitted by the site from `koreografia/data/robots.json`):
+track 157.0 mm (this robot slips ~6 % in spins, unevenly — check its right tyre), PWM_MIN 50,
+speed line 0.155 / 38.00, BAL_TRIM 1.000, MM_PER_IMP copied from robot 1 (1 m measured right).
+Robot 2's PWM leads and encoder plugs are cross-wired, so it runs firmware **v7** with the wiring flag
+saved in its NVS: `N,-1,1,-1,1,1`. Floor result: 1 m straight and right; 3 spins within ~10°.
+Test choreography: `koreografia/data/teszt-1m-3kor.json` (robots 1 and 2 side by side, 1.2 m apart).
+
+```cpp
 // =====================================================================
-//  SHOW -- ROBOT @@ROBOT@@   (v6)
+//  SHOW -- ROBOT 2   (v6)
 //  Enkoderes koreografia vonal nelkul, kerekenkent szinkronizalva.
 //
 //  EZ A FAJL KET RESZBOL ALL:
@@ -72,7 +82,7 @@
 
 // ============ 1. MELYIK ROBOT VAGYOK ============
 
-#define ROBOT @@ROBOT@@
+#define ROBOT 2
 
 
 // =====================================================================
@@ -81,25 +91,25 @@
 // =====================================================================
 
 // --- T1 tolasi teszt + T5 hajtott egyenes ---
-const float MM_PER_IMP_BAL  = @@MM_PER_IMP_BAL@@;
-const float MM_PER_IMP_JOBB = @@MM_PER_IMP_JOBB@@;
+const float MM_PER_IMP_BAL  = 0.34582;
+const float MM_PER_IMP_JOBB = 0.34392;
 
 // --- T7 sebessegmeres: PWM = PWM_PER_MMS * v + PWM_NULLA ---
 //     ELOZETES ertek a T2 D-fazisabol illesztve. Futtasd a T7-et
 //     es ird felul -- ez a ket szam teszi egyformava az ot robotot.
-const float PWM_PER_MMS = @@PWM_PER_MMS@@;
-const float PWM_NULLA   = @@PWM_NULLA@@;
+const float PWM_PER_MMS = 0.15500;
+const float PWM_NULLA   = 38.00;
 
 // --- porges: HANGOLT szam, nem fizikai nyomtav (a csuszast is tartalmazza)
-const float NYOMTAV_MM  = @@NYOMTAV_MM@@;
-const float PORGES_TRIM = @@PORGES_TRIM@@;    // tul sokat porog -> 0,98 | keveset -> 1,02
+const float NYOMTAV_MM  = 157.0;
+const float PORGES_TRIM = 1.00;    // tul sokat porog -> 0,98 | keveset -> 1,02
 
 // --- egyenes futas arany-finomitasa (1,000 = nincs javitas)
 //     farat BALRA tolja -> 0,996 | JOBBRA -> 1,004 | egy lepes ~4 mm/meter
-const float BAL_TRIM = @@BAL_TRIM@@;
+const float BAL_TRIM = 1.000;
 
 // --- holtsav (T2 C fazis): bal 20/40, jobb 25/20 -> a legrosszabb 40
-const int PWM_MIN = @@PWM_MIN@@;            // ez ala semmilyen szamitas nem viheti
+const int PWM_MIN = 50;            // ez ala semmilyen szamitas nem viheti
 
 
 // =====================================================================
@@ -364,7 +374,13 @@ void jobbra_kor(float k) { porog_fok(+360.0 * k); }
 
 void koreografia() {
 
-@@KOREOGRAFIA@@
+  lepes_kezd();  elore_cm(100.0);      lepes_var(8000);    // [1 elore 1 m] -> (2600, 1800) 90.0 deg  r=127 mm
+  lepes_kezd();                        lepes_var(1000);    // [2 all] hold -> (2600, 1800) 90.0 deg  r=127 mm
+  lepes_kezd();  hatra_cm(100.0);      lepes_var(8000);    // [3 hatra 1 m] -> (2600, 800) 90.0 deg  r=297 mm
+  lepes_kezd();                        lepes_var(1000);    // [4 all] hold -> (2600, 800) 90.0 deg  r=297 mm
+  lepes_kezd();  balra_fok(1080.0);    lepes_var(16000);   // [5 3 kor balra] -> (2600, 800) 90.0 deg  r=297 mm
+  lepes_kezd();                        lepes_var(1000);    // [6 all] hold -> (2600, 800) 90.0 deg  r=297 mm
+  lepes_kezd();  jobbra_fok(1080.0);   lepes_var(16000);   // [7 3 kor jobbra] -> (2600, 800) 90.0 deg  r=297 mm
 
 }
 
@@ -402,3 +418,4 @@ void indulas() {
 void vezerles() {
   motor(0, 0);      // a koreografia az indulas()-ban fut le
 }
+```
