@@ -489,3 +489,87 @@ void vezerles() {
            + " xy=" + String(START_X[R] + odoX, 0) + "," + String(START_Y[R] + odoY, 0));
   }
 }
+
+
+// =====================================================================
+//  vonalkoveto.ino -- vonalkovetes a keret-ep-en (P-D szabalyzas)
+//
+//  ELOTTE: Muszerfal -> "L" (szenzor-kalibralas): a 3 mp alatt told at a
+//  robotot a vonalon, hogy minden szenzor lasson feheret ES feketet is.
+//  A kalibracio az NVS-ben marad, ujra csak mas padlon/vonalon kell.
+//
+//  T = indul, S = stop. A keret 20 ms-onkent hivja a vezerles()-t, es
+//  elotte beolvassa a szenzorokat; a vonalPozicioSzamol() a vonal
+//  helyet adja -2000 (bal szel) .. 0 (kozep) .. +2000 (jobb szel),
+//  9999 = nincs vonal.
+//
+//  Hangolas (fentrol lefele, egyszerre egyet):
+//    ALAP_PWM   sebesseg egyenesben. Kezdj 90-nel, aztan emeld.
+//    KP         kormanyzas erossege: korr = poz * KP / 1000. Ha kigyozik
+//               egyenesben -> kisebb; ha kicsuszik a kanyarban -> nagyobb.
+//    KD         csillapitas (a pozicio valtozasara reagal). Ha KP mellett
+//               meg lengedezik, emeld; tul nagy KD idegesse teszi.
+//    KANYAR_LASSIT  mennyit lassitson, ha a vonal a szelen van (0 = semmit).
+// =====================================================================
+
+const int ALAP_PWM      = 90;     // alapsebesseg egyenesben (PWM)
+const int KP            = 60;     // korr = poz * KP / 1000  ->  szelso helyzet (2000) = 120 PWM
+const int KD            = 400;    // korr += (poz - elozo) * KD / 1000  (20 ms-onkent)
+const int KANYAR_LASSIT = 40;     // szelen ennyivel lassabb az alap
+const int KORR_MAX      = 110;    // a kormanyzas maximuma (PWM)
+const int KERESES_PWM   = 75;     // elvesztett vonal: helyben fordulas ereje
+const int KERESES_MAX   = 150;    // ennyi ciklus (x 20 ms = 3 s) kereses utan feladja
+
+static int  elozoPoz = 0;
+static int  keresesSzamlalo = 0;
+static bool feladta = false;
+
+void indulas() {
+  uzenet("vonalkovetes indul -- L kalibracio kell elotte!");
+  enkoderNullaz();
+  elozoPoz = 0;
+  keresesSzamlalo = 0;
+  feladta = false;
+  keresesiIrany = 1;
+  motor(0, 0);
+  varj(500);
+}
+
+void vezerles() {
+  if (feladta) { motor(0, 0); return; }
+
+  int poz = vonalPozicioSzamol();          // a keret mar beolvasta a szenzorokat
+
+  // ---- nincs vonal: arra fordul, amerre utoljara latta ----
+  if (poz == 9999) {
+    keresesSzamlalo++;
+    if (keresesSzamlalo > KERESES_MAX) {
+      feladta = true;
+      motor(0, 0);
+      uzenet("vonal elveszett -- megallok (S, aztan tedd vissza es T)");
+      return;
+    }
+    motor(KERESES_PWM * keresesiIrany, -KERESES_PWM * keresesiIrany);
+    return;
+  }
+  keresesSzamlalo = 0;
+  utolsoPozicio = poz;
+  keresesiIrany = (poz < 0) ? -1 : 1;
+
+  // ---- P-D kormanyzas ----
+  int korr = (int)((long)poz * KP / 1000) + (int)((long)(poz - elozoPoz) * KD / 1000);
+  elozoPoz = poz;
+  if (korr >  KORR_MAX) korr =  KORR_MAX;
+  if (korr < -KORR_MAX) korr = -KORR_MAX;
+
+  // kanyarban lassabb alap: |poz| 0 -> ALAP_PWM, 2000 -> ALAP_PWM - KANYAR_LASSIT
+  int alap = ALAP_PWM - (int)((long)abs(poz) * KANYAR_LASSIT / 2000);
+
+  // poz > 0: a vonal jobbra van -> jobbra kell fordulni -> bal kerek gyorsabb
+  int bal  = alap + korr;
+  int jobb = alap - korr;
+  if (bal  < -255) bal  = -255;  if (bal  > 255) bal  = 255;
+  if (jobb < -255) jobb = -255;  if (jobb > 255) jobb = 255;
+  motor(bal, jobb);
+}
+
