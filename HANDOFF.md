@@ -1,4 +1,4 @@
-# Handoff — 2026-09-13
+# Handoff — 2026-09-20
 
 ## Where things stand
 
@@ -13,7 +13,23 @@
 - **Robot 2** (`TaborRobot-2`): firmware **v7**, **cross-wired** (PWM leads + encoder plugs) → wiring flag saved in its NVS
   `N,-1,1,-1,1,1`. Weaker motors (deadband 45–50, right wheel ~20 % faster), slips ~6 % in spins → track 157.0, PWM_MIN 50,
   speed line 0.155/38.00. Floor: 1 m straight and right; 3 spins within ~10° (left/right asymmetric — check its right tyre).
-- **Robots 3–5**: still the camp framework, `null` calibration.
+- **Robot 3** (`TaborRobot-3`, 2026-09-14, from a Mac): firmware **v7**, signs `N,-1,1,-1,1,0`, track 152.5, PWM_MIN 45,
+  speed line copied from robot 1. Sketch in `RobotBaseStats/SHOW_robot3.md`. (That session committed only the sketch;
+  its `robots.json` entry and the test-show slot were reconstructed from the sketch on 2026-09-20 — the emitter now
+  reproduces the committed sketch byte for byte apart from the pose comments.)
+- **Robot 4** (`TaborRobot-4`, 2026-09-20): firmware **v7**, signs `N,-1,1,-1,1,0`, track 151.1, PWM_MIN 45, BAL_TRIM 1.004,
+  speed line copied from robot 1 (a PWM 50/60 sweep matched it). Arrived with its **right encoder GND unplugged**
+  (`N,AUTO`: "az enkoder nem szamol (bal -785, jobb 0)") — reseated, then everything was textbook. Floor: 1 m forward/back
+  on the mark, 3 spins both ways on the mark; every move on its encoder target (`RobotBaseStats/SHOW_robot4.md`).
+- **Robot 5** (`TaborRobot-5`, 2026-09-20, **not calibrated — encoder wiring**): flashed keret-ep **v7** over USB (it
+  arrived already on v7 under robot 4's name, 10.6 V pack), renamed `B,5`, **not yet paired** in Windows. `N,AUTO` failed:
+  left encoder 0 pulses (right 1121). Hand- and motor-driven tests showed the LEFT encoder was wired **VCC → D26**
+  (a GPIO, so no supply; C2 also on D26) and the RIGHT encoder's VCC on **RX0**. After several rewiring attempts
+  neither encoder counted reliably (the pin the user took for 3V3 gave nothing; the right encoder's signals ended up on
+  D25/D26). Stopped there. **Next time: wire both encoders from scratch per `Sources/Lábbekötési táblázat.txt`** —
+  left C1/C2 → GPIO25/26, right C1/C2 → GPIO27/14, both VCC → the **3V3 corner pin next to EN** (same edge as D25…D14;
+  the sensor bar should hang on it too), GND → GND — then `M,0,90` / `M,90,0` and read `D` (no hand-turning needed),
+  then `N,AUTO` and the robot 4 flow. `robots.json` keeps it `null`.
 
 ## The motion engine is now the site's (template "SHOW v6")
 
@@ -31,7 +47,14 @@ with 50 Hz telemetry on robot 1 (see `koreografia/README.md` "What v6 fixes"):
 
 Per-robot numbers live in `koreografia/data/robots.json`; `core/config.js TIMING` mirrors block 3 (tests check).
 
-## Bringing up a new robot (what worked for robot 2, ~20 min)
+## Bringing up a new robot (what worked for robots 2–4, ~20 min)
+
+Everything below can also be done from a shell, no browser: `node tools/firmware.js build keret` → `upload keret COM5`
+(USB), then line commands over the COM port with pyserial (`B,4`, `N,AUTO`, `G,408,408,120`, an `M,p,p` sweep for
+PWM_MIN), `build 4 data/teszt-1m-3kor.json` → `upload 4 COM5` (or Bluetooth OTA: the `F` protocol in `transport/ota.js`
+is ~40 lines of Python), `S`/`Z`/`T` and read the `megy …`/`porog …` lines. Two gotchas: the camp framework streams 50 Hz
+`T,…` telemetry as soon as the port opens, and over Bluetooth the engine's messages are only sent while the SPP client is
+connected — closing the COM port between commands loses them, so keep one session open for a whole run.
 
 1. Kód tab → Példa *helykitöltő show.ino* → Fordít → **USB-telepítés**. Send `B,<n>` (raw command box) → robot reboots as
    `TaborRobot-<n>` → pair it in Windows → header Robot n → Csatlakozás. (Names matter: auto-connect files each robot by its name.)
@@ -65,7 +88,9 @@ every beat boundary.
 ## Still open
 
 - Fine-tune robot 1/2 numbers (user: "minor tweaking"); robot 2's spin asymmetry is mechanical (right tyre / wheel seating).
-- Robots 3–5: the bring-up above.
+- Robot 5: fix the encoder wiring (see above), then the bring-up.
+- `teszt-1m-3kor.json` now holds robots 1–4 at 1.05 m spacing on a 4.6 m field (the pessimistic error model needs
+  1035 mm between robots after 2 m of driving); a four-robot **▶ Start mind** run has not been tried yet.
 - `core/config.js ERROR_MODEL` is still the pessimistic provisional one (±10 cm/m, ±20°/3 spins) — today's runs were far
   better; recalibrate it (T8 or from the floor tests), then robots can stand closer than 1.7 m in the validator.
-- Untracked, deliberately not committed: `Robot1.bundle` (git bundle), `CLAUDE_CODE_PROMPT.md`.
+- Untracked, deliberately not committed: `Robot1.bundle` (git bundle), `CLAUDE_CODE_PROMPT.md`, `Tests/desktop.ini`.

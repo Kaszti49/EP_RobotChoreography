@@ -13,7 +13,7 @@ node tools/serve.js       # http://localhost:8080/ui/  (Koreográfia | Kód | M�
 
 Root files the app depends on:
 
-- `SHOW_robot1.txt` — the measured, proven show sketch for robot 1; `koreografia/templates/show_template.txt`
+- `RobotBaseStats/SHOW_robot1.md` — the measured, proven show sketch for robot 1 (robots 2 and 3 alongside it); `koreografia/templates/show_template.txt`
   is generated from it (`node tools/make-template.js`) and the tests assert they never drift.
 - `MERESI_MENET.md`, `DOKUMENTACIO_robot1.md` — the measurement procedure and robot 1's data that
   `koreografia/data/robots.json` and `core/config.js` are built on.

@@ -37,7 +37,7 @@ ui/           one page, three tabs (app.js = shell + Koreografia; code-tab.js; d
                 Muszerfal    live sensor / PWM charts, value table, D-pad, calibration + setup buttons
 transport/    Transport interface, manual (files), Web Serial link, OTA protocol -- see its README
 firmware/     OUR OWN robot framework ("keret-ep") that the emitted show is compiled into
-data/         robots.json (calibration; robot 1 filled, 2-5 null), example-show.json
+data/         robots.json (calibration; robots 1-4 filled, 5 null), example-show.json
 templates/    show_template.txt = THE motion engine (v6) with placeholders; SHOW_robot1.txt is its v5 ancestor
 tools/        build.js (CLI), serve.js (static server + POST /api/compile), make-template.js,
               keret_stub.h (g++ stub), firmware.js (arduino-cli compile + USB upload)
@@ -150,7 +150,7 @@ What v6 fixes over v5 (all measured on robot 1 with 50 Hz telemetry, see `HANDOF
   `TURES_IMP` (16 pulses ≈ 3 mm / 3°) is crept back. Result on robot 1: 1 m ends within
   ±10 pulses, 3 spins within ±14 pulses of the target (v5: +150 / +900).
 
-Robots whose `robots.json` calibration is `null` (2–5 today) are refused with an error that
+Robots whose `robots.json` calibration is `null` (robot 5 today) are refused with an error that
 says to run `MERESI_MENET.md`. Robot 1's numbers are never substituted for them.
 
 The emitted file is checked with `g++ -fsyntax-only` against `tools/keret_stub.h` (a stub

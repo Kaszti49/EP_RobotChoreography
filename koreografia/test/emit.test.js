@@ -68,12 +68,16 @@ test('block 6 has one lepes_kezd / lepes_var pair per beat with the beat duratio
 
 test('refuses robots with null calibration, with a clear message', () => {
   const { compiled, deps: d } = deps();
-  for (const id of [3, 4, 5]) {
+  // which robots are calibrated follows robots.json (a bring-up flips one), so derive it
+  const calibrated = d.robots.robots.filter((r) => r.calibration).map((r) => String(r.id));
+  const uncalibrated = d.robots.robots.filter((r) => !r.calibration).map((r) => String(r.id));
+  assert.ok(uncalibrated.length > 0, 'test needs at least one robot with null calibration');
+  for (const id of uncalibrated.map(Number)) {
     assert.throws(() => emitRobot(compiled, id, d), (e) => e instanceof EmitError && e.robot === id && /no calibration yet/.test(e.message));
   }
   const all = emitAll(compiled, d);
-  assert.deepEqual(Object.keys(all.files), ['1', '2']);
-  assert.deepEqual(Object.keys(all.errors).sort(), ['3', '4', '5']);
+  assert.deepEqual(Object.keys(all.files).sort(), calibrated.sort());
+  assert.deepEqual(Object.keys(all.errors).sort(), uncalibrated.sort());
   assert.ok(!Object.values(all.errors).some((m) => /0\.34582/.test(m)), "never leaks robot 1's numbers");
 });
 
