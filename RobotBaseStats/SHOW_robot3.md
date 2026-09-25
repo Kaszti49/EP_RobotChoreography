@@ -10,6 +10,29 @@ Encoder log of the approved run (fresh pack, 9.3 V): 1 m → 2891/2906 of 2892/2
 3 spins left → −4102/4234 (sum 8336 of 8335); 3 spins right → 4277/−4058 (sum 8335) — every move on its target.
 Test choreography: `koreografia/data/teszt-1m-3kor.json` (robots 1, 2 and 3 side by side, 1.2 m apart).
 
+## 2026-09-22 — right motor fixed, spins trimmed per direction, show part approved
+
+- **Morning: the right motor was open-circuit.** `N,AUTO` printed the "KERESZTBEN" warning and saved `N,1,1,-1,1,0`;
+  telemetry (`R,20` while `M,0,255`) showed zero pulses on both encoders and no battery sag — no current at all.
+  The right encoder counted fine whenever its wheel was pushed. The 2026-09-21 run (`logs/run_robot3_20260921-132953_tempo150.log`)
+  had already failed the same way (every move to the 20 s timeout, left wheel running away). The team reconnected the motor.
+- After the fix: `M,0,150` draws current and counts 1409 imp / 0.8 s; `H` = 1907/2164 (right wheel ~13 % faster at equal
+  PWM). `N,AUTO` still prints the "KERESZTBEN" line on this chassis — a false positive: its free wheel coasts long after
+  phase 1, so the cross count in phase 2 exceeds half. The saved signs **`N,1,1,-1,1,0`** are correct (left encoder now +1,
+  not the −1 above — something on the left was re-plugged since the Mac session); confirmed by the runs below.
+- `teszt-1m-3kor` run 1 (9.56 V, TEMPO 1.5): encoders exact (1 m 2903/2888, back −2884/−2904, spins sums 8339 / 8330 of
+  8335). Floor: 3 spins **left 10° over, right 10° short**, rear drifting left on the straights →
+  `PORGES_TRIM_BAL 0.991`, `PORGES_TRIM_JOBB 1.009`, `BAL_TRIM 0.996`.
+- Run 2 (9.47 V): sums 8262 / 8398 as the trims ask; the straight followed only half the 0.996 ratio (2889/2896) — at base
+  PWM 75 the sync has limited authority. Floor: left spot on, right still 5° short → `PORGES_TRIM_JOBB 1.013`.
+- **Show part, run 1** (`logs/run_robot3_20260922-083659_show1.log`, 9.42 → 9.35 V, 161 s): all 13 moves on target, worst
+  11 imp; the encoders put the finish 4 mm from the start tick, nose 2° left. Floor: "almost perfect" — right spins now
+  **5° over per 360°** (15–20° over at 1080°) → `PORGES_TRIM_JOBB 1.010` (between the two floor reads). Flashed, not yet
+  run alone; next check is the joint run.
+
+Robot 3 block 2 as of now: `NYOMTAV 152.5, BAL_TRIM 0.996, PORGES_TRIM_BAL 0.991, PORGES_TRIM_JOBB 1.010, TEMPO 1.5`
+(`koreografia/data/robots.json`). Paired as `TaborRobot-3` = **COM13** on the Windows PC.
+
 ```cpp
 // =====================================================================
 //  SHOW -- ROBOT 3   (v6)

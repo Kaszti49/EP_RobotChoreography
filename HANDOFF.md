@@ -94,3 +94,17 @@ every beat boundary.
 - `core/config.js ERROR_MODEL` is still the pessimistic provisional one (±10 cm/m, ±20°/3 spins) — today's runs were far
   better; recalibrate it (T8 or from the floor tests), then robots can stand closer than 1.7 m in the validator.
 - Untracked, deliberately not committed: `Robot1.bundle` (git bundle), `CLAUDE_CODE_PROMPT.md`, `Tests/desktop.ini`.
+
+## Idea (2026-09-22, not started): measure the robots' real positions from a phone video
+
+Why: every spin leaves 1–3° that nobody can see; by the last long leg the heading error is 10°+ and all five land off.
+Dead reckoning has no outside reference, and tuning one number per run by eye is slow. ESP32-to-ESP32 networking does
+not help (nobody knows where it is).
+
+How: a phone on a tripod, fixed, as high/central as possible; four tape crosses on the floor at known (x, y) for a
+pixel→mm homography (no need for a true overhead view); two coloured paper discs per robot (one colour per robot,
+front + back → position and heading). A Python + OpenCV script (~150 lines) tracks the discs per frame and writes a CSV
+per robot of (t, x, y, heading) and a per-beat comparison against `keringo-show.json` — the `tools/trace.js` table,
+but measured instead of encoder-reckoned. One clean recording gives the true error of every spin on every robot.
+Python is not installed on this PC (`winget install Python.Python.3.12`, `pip install opencv-python numpy`).
+Later step on top of the same script: live corrections over the existing Bluetooth links.

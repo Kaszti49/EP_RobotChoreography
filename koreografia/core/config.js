@@ -30,9 +30,22 @@ export const FIELD_DEFAULT = Object.freeze({
 // ---------------------------------------------------------------------
 export const ROBOT_RADIUS_MM = 120;
 
-// Minimum gap between the *expanded* uncertainty discs of two robots.
-// DOKUMENTACIO_robot1.md section 6: "ne tervezz 20 cm-nel kisebb hezagot".
-export const MIN_GAP_MM = 200;
+// Minimum gap between two robots' bodies in the plan.
+// DOKUMENTACIO_robot1.md section 6 said "ne tervezz 20 cm-nel kisebb
+// hezagot"; overridden to 10 cm on 2026-09-21 (user decision, for the
+// closing line-up of data/keringo-show.json: 24 cm body + 10 cm gap =
+// 34 cm centre to centre).
+export const MIN_GAP_MM = 100;
+
+// How much of the two robots' drift radii (r_i + r_j) the clearance check
+// adds on top of bodies + MIN_GAP_MM. 1 = the original rule (gap between
+// the *expanded* uncertainty discs -- with the provisional ERROR_MODEL no
+// formation tighter than ~60 cm can pass it). 0 = clearance checks the
+// planned bodies only, and drift is policed by DRIFT_CEILING_MM alone.
+// Set to 0 on 2026-09-21 together with the 10 cm gap; put back to 1 once
+// ERROR_MODEL is recalibrated from the floor tests if you want the discs
+// counted again.
+export const CLEARANCE_DRIFT_FACTOR = 0;
 
 // ---------------------------------------------------------------------
 //  Error model  (PROVISIONAL -- see header)
@@ -164,6 +177,7 @@ export const OPS = Object.freeze({
 export const DEFAULT_CONFIG = Object.freeze({
   robot_radius_mm: ROBOT_RADIUS_MM,
   min_gap_mm: MIN_GAP_MM,
+  clearance_drift_factor: CLEARANCE_DRIFT_FACTOR,
   drift_ceiling_mm: DRIFT_CEILING_MM,
   error: ERROR_MODEL,
   timing: TIMING,

@@ -1,0 +1,565 @@
+{
+  "_comment": [
+    "KERINGO -- elmeleti show ot robotra, 4,6 x 3 m padlora (a teszt-1m-3kor mezoje). 2026-09-21.",
+    "Kozonseg az y=0 oldalon. Indulas: sor az y=600 vonalon (x = 900, 1650, 2300, 2950, 3700), mind a kozonsegnek hattal (theta 90, +Y).",
+    "A negyzet kozepe (2300,1600), fel oldala 700: A=(1600,900) B=(3000,900) C=(3000,2300) D=(1600,2300).",
+    "1. felvonas NYITANY: egyutt elore; szetnyilas a negyzetre (3-as kozepre, 2/4 az elso, 1/5 a hatso sarokra);",
+    "   porges-hullam kozeprol kifele (3, majd 1+5, majd 2+4), vegul mind egyszerre ket kor.",
+    "2. felvonas KERINGO: a 3-as kozepen porog (3 kor balra, majd 3 kor jobbra), a masik negy az ora jarasaval ellentetesen",
+    "   kering korulotte, sarokrol sarokra; ket ugras = fel fordulat (mindenki az atellenes sarokra er). Egy ugras 1,4 m --",
+    "   a (pesszimista) hibamodell miatt minden ugras utan jelre allas kell; ha a config.js ERROR_MODEL-t ujrakalibraljatok,",
+    "   a kozbulso anchorok kivehetok es a kering mehet egyben.",
+    "   A szunetek 1 mp-esek (kivansag szerint); az \"anchor\": true jelzo rajtuk marad, hogy a validator atengedje --",
+    "   vagyis a modell ugy szamol, mintha a robotok minden szunetben pontosan a jelen allnanak.",
+    "3. felvonas FINALE: csillag (befele fordulnak, egy lepes a kozep fele, a 3-as porog), majd SORBA ALLAS ket lepesben (elobb az",
+    "   5-os elore es a 2-es hatra, az 1-es es a 4-es a helye magassagaba all; aztan ezek oldalrol becsusznak): fuggoleges vonal x=2300-on,",
+    "   342 mm kozeptavolsag (24 cm test + 10 cm hezag, +2 mm a 0,1 cm-es kvantalas miatt), elol az 5-os, hatul a 2-es, mind a kozonseg",
+    "   fele; a sor egyutt lep egyet a kozonseghez, zaro porges (szelek 2 kor, kozep 3 kor) a vonalban.",
+    "4. HAZATERES: a negy szelso oldalra kicsuszik a sorbol a sajat rajtoszlopaba (a 3-as marad), aztan mind az oten egyszerre",
+    "   hatramennek a rajtjelig es megfordulnak -- mindenki a kiindulo pozban (theta 90) all meg, a show ujraindithato a robotok erintese nelkul.",
+    "Validator (2026-09-21): core/config.js MIN_GAP_MM 200 -> 100 es CLEARANCE_DRIFT_FACTOR 0 (a tavolsag-ellenorzes a tervezett testeket nezi, a sodrodast a DRIFT_CEILING figyeli)."
+  ],
+  "field": {
+    "width_mm": 4600,
+    "height_mm": 3000,
+    "margin_mm": 250
+  },
+  "robots": [
+    {
+      "id": 1,
+      "start": {
+        "x": 900,
+        "y": 600,
+        "theta": 90
+      }
+    },
+    {
+      "id": 2,
+      "start": {
+        "x": 1650,
+        "y": 600,
+        "theta": 90
+      }
+    },
+    {
+      "id": 3,
+      "start": {
+        "x": 2300,
+        "y": 600,
+        "theta": 90
+      }
+    },
+    {
+      "id": 4,
+      "start": {
+        "x": 2950,
+        "y": 600,
+        "theta": 90
+      }
+    },
+    {
+      "id": 5,
+      "start": {
+        "x": 3700,
+        "y": 600,
+        "theta": 90
+      }
+    }
+  ],
+  "beats": [
+    {
+      "name": "felvonulas",
+      "duration_ms": 5000,
+      "moves": {
+        "1": {
+          "type": "primitive",
+          "op": "elore_cm",
+          "value": 30
+        },
+        "2": {
+          "type": "primitive",
+          "op": "elore_cm",
+          "value": 30
+        },
+        "3": {
+          "type": "primitive",
+          "op": "elore_cm",
+          "value": 30
+        },
+        "4": {
+          "type": "primitive",
+          "op": "elore_cm",
+          "value": 30
+        },
+        "5": {
+          "type": "primitive",
+          "op": "elore_cm",
+          "value": 30
+        }
+      }
+    },
+    {
+      "name": "szetnyilas a negyzetre",
+      "duration_ms": 17000,
+      "moves": {
+        "1": {
+          "type": "goto",
+          "x": 1600,
+          "y": 2300,
+          "face": 270
+        },
+        "2": {
+          "type": "goto",
+          "x": 1600,
+          "y": 900,
+          "face": 0
+        },
+        "3": {
+          "type": "goto",
+          "x": 2300,
+          "y": 1600,
+          "face": 90
+        },
+        "4": {
+          "type": "goto",
+          "x": 3000,
+          "y": 900,
+          "face": 90
+        },
+        "5": {
+          "type": "goto",
+          "x": 3000,
+          "y": 2300,
+          "face": 180
+        }
+      }
+    },
+    {
+      "name": "hullam - kozep",
+      "duration_ms": 5000,
+      "moves": {
+        "3": {
+          "type": "primitive",
+          "op": "balra_fok",
+          "value": 360
+        }
+      }
+    },
+    {
+      "name": "hullam - hatso par",
+      "duration_ms": 5000,
+      "moves": {
+        "1": {
+          "type": "primitive",
+          "op": "jobbra_fok",
+          "value": 360
+        },
+        "5": {
+          "type": "primitive",
+          "op": "balra_fok",
+          "value": 360
+        }
+      }
+    },
+    {
+      "name": "hullam - elso par",
+      "duration_ms": 5000,
+      "moves": {
+        "2": {
+          "type": "primitive",
+          "op": "jobbra_fok",
+          "value": 360
+        },
+        "4": {
+          "type": "primitive",
+          "op": "balra_fok",
+          "value": 360
+        }
+      }
+    },
+    {
+      "name": "mind porog",
+      "duration_ms": 7500,
+      "moves": {
+        "1": {
+          "type": "primitive",
+          "op": "balra_fok",
+          "value": 720
+        },
+        "2": {
+          "type": "primitive",
+          "op": "jobbra_fok",
+          "value": 720
+        },
+        "3": {
+          "type": "primitive",
+          "op": "balra_fok",
+          "value": 720
+        },
+        "4": {
+          "type": "primitive",
+          "op": "jobbra_fok",
+          "value": 720
+        },
+        "5": {
+          "type": "primitive",
+          "op": "balra_fok",
+          "value": 720
+        }
+      }
+    },
+    {
+      "name": "szunet 1",
+      "duration_ms": 1000,
+      "anchor": true,
+      "moves": {}
+    },
+    {
+      "name": "keringo 1 - kozep balra",
+      "duration_ms": 13000,
+      "moves": {
+        "1": {
+          "type": "goto",
+          "x": 1600,
+          "y": 900,
+          "face": 0
+        },
+        "2": {
+          "type": "goto",
+          "x": 3000,
+          "y": 900,
+          "face": 90
+        },
+        "3": {
+          "type": "primitive",
+          "op": "balra_kor",
+          "value": 3
+        },
+        "4": {
+          "type": "goto",
+          "x": 3000,
+          "y": 2300,
+          "face": 180
+        },
+        "5": {
+          "type": "goto",
+          "x": 1600,
+          "y": 2300,
+          "face": 270
+        }
+      }
+    },
+    {
+      "name": "szunet 2",
+      "duration_ms": 1000,
+      "anchor": true,
+      "moves": {}
+    },
+    {
+      "name": "keringo 2 - kozep jobbra",
+      "duration_ms": 13000,
+      "moves": {
+        "1": {
+          "type": "goto",
+          "x": 3000,
+          "y": 900,
+          "face": 90
+        },
+        "2": {
+          "type": "goto",
+          "x": 3000,
+          "y": 2300,
+          "face": 180
+        },
+        "3": {
+          "type": "primitive",
+          "op": "jobbra_kor",
+          "value": 3
+        },
+        "4": {
+          "type": "goto",
+          "x": 1600,
+          "y": 2300,
+          "face": 270
+        },
+        "5": {
+          "type": "goto",
+          "x": 1600,
+          "y": 900,
+          "face": 0
+        }
+      }
+    },
+    {
+      "name": "szunet 3",
+      "duration_ms": 1000,
+      "anchor": true,
+      "moves": {}
+    },
+    {
+      "name": "csillag - befele",
+      "duration_ms": 6000,
+      "moves": {
+        "1": {
+          "type": "goto",
+          "x": 3000,
+          "y": 900,
+          "face": 135
+        },
+        "2": {
+          "type": "goto",
+          "x": 3000,
+          "y": 2300,
+          "face": 225
+        },
+        "3": {
+          "type": "primitive",
+          "op": "balra_fok",
+          "value": 360
+        },
+        "4": {
+          "type": "goto",
+          "x": 1600,
+          "y": 2300,
+          "face": 315
+        },
+        "5": {
+          "type": "goto",
+          "x": 1600,
+          "y": 900,
+          "face": 45
+        }
+      }
+    },
+    {
+      "name": "csillag - egy lepes",
+      "duration_ms": 6000,
+      "moves": {
+        "1": {
+          "type": "primitive",
+          "op": "elore_cm",
+          "value": 25
+        },
+        "2": {
+          "type": "primitive",
+          "op": "elore_cm",
+          "value": 25
+        },
+        "3": {
+          "type": "primitive",
+          "op": "jobbra_fok",
+          "value": 360
+        },
+        "4": {
+          "type": "primitive",
+          "op": "elore_cm",
+          "value": 25
+        },
+        "5": {
+          "type": "primitive",
+          "op": "elore_cm",
+          "value": 25
+        }
+      }
+    },
+    {
+      "name": "sorba allas 1 - eleje, vege, beallas",
+      "duration_ms": 11500,
+      "moves": {
+        "1": {
+          "type": "goto",
+          "x": 2823,
+          "y": 1258,
+          "face": 180
+        },
+        "2": {
+          "type": "goto",
+          "x": 2300,
+          "y": 2284,
+          "face": 270
+        },
+        "3": {
+          "type": "goto",
+          "x": 2300,
+          "y": 1600,
+          "face": 270
+        },
+        "4": {
+          "type": "goto",
+          "x": 1777,
+          "y": 1942,
+          "face": 0
+        },
+        "5": {
+          "type": "goto",
+          "x": 2300,
+          "y": 916,
+          "face": 270
+        }
+      }
+    },
+    {
+      "name": "sorba allas 2 - a kozepe",
+      "duration_ms": 11500,
+      "moves": {
+        "1": {
+          "type": "goto",
+          "x": 2300,
+          "y": 1258,
+          "face": 270
+        },
+        "4": {
+          "type": "goto",
+          "x": 2300,
+          "y": 1942,
+          "face": 270
+        }
+      }
+    },
+    {
+      "name": "egy lepes a kozonseghez",
+      "duration_ms": 5000,
+      "moves": {
+        "1": {
+          "type": "primitive",
+          "op": "elore_cm",
+          "value": 30
+        },
+        "2": {
+          "type": "primitive",
+          "op": "elore_cm",
+          "value": 30
+        },
+        "3": {
+          "type": "primitive",
+          "op": "elore_cm",
+          "value": 30
+        },
+        "4": {
+          "type": "primitive",
+          "op": "elore_cm",
+          "value": 30
+        },
+        "5": {
+          "type": "primitive",
+          "op": "elore_cm",
+          "value": 30
+        }
+      }
+    },
+    {
+      "name": "zaro porges",
+      "duration_ms": 9500,
+      "moves": {
+        "1": {
+          "type": "primitive",
+          "op": "jobbra_fok",
+          "value": 720
+        },
+        "2": {
+          "type": "primitive",
+          "op": "balra_fok",
+          "value": 720
+        },
+        "3": {
+          "type": "primitive",
+          "op": "balra_kor",
+          "value": 3
+        },
+        "4": {
+          "type": "primitive",
+          "op": "jobbra_fok",
+          "value": 720
+        },
+        "5": {
+          "type": "primitive",
+          "op": "balra_fok",
+          "value": 720
+        }
+      }
+    },
+    {
+      "name": "szunet 4",
+      "duration_ms": 1000,
+      "anchor": true,
+      "moves": {}
+    },
+    {
+      "name": "hazateres 1 - szetnyilik a sor",
+      "duration_ms": 16000,
+      "moves": {
+        "1": {
+          "type": "goto",
+          "x": 900,
+          "y": 958,
+          "face": 270
+        },
+        "2": {
+          "type": "goto",
+          "x": 1650,
+          "y": 1984,
+          "face": 270
+        },
+        "4": {
+          "type": "goto",
+          "x": 2950,
+          "y": 1642,
+          "face": 270
+        },
+        "5": {
+          "type": "goto",
+          "x": 3700,
+          "y": 616,
+          "face": 270
+        }
+      }
+    },
+    {
+      "name": "szunet 5",
+      "duration_ms": 1000,
+      "anchor": true,
+      "moves": {}
+    },
+    {
+      "name": "hazateres 2 - egyutt a rajtjelre",
+      "duration_ms": 13000,
+      "moves": {
+        "1": {
+          "type": "goto",
+          "x": 900,
+          "y": 600,
+          "face": 90
+        },
+        "2": {
+          "type": "goto",
+          "x": 1650,
+          "y": 600,
+          "face": 90
+        },
+        "3": {
+          "type": "goto",
+          "x": 2300,
+          "y": 600,
+          "face": 90
+        },
+        "4": {
+          "type": "goto",
+          "x": 2950,
+          "y": 600,
+          "face": 90
+        },
+        "5": {
+          "type": "goto",
+          "x": 3700,
+          "y": 600,
+          "face": 90
+        }
+      }
+    },
+    {
+      "name": "vege",
+      "duration_ms": 2000,
+      "moves": {}
+    }
+  ]
+}

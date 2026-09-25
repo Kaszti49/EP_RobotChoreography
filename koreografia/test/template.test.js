@@ -45,8 +45,8 @@ test('template has exactly the placeholders the emitter fills', () => {
   const t = loadTemplate();
   const found = [...t.matchAll(/@@([A-Z_]+)@@/g)].map((m) => m[1]).sort();
   assert.deepEqual([...new Set(found)], [
-    'BAL_TRIM', 'KOREOGRAFIA', 'MM_PER_IMP_BAL', 'MM_PER_IMP_JOBB', 'NYOMTAV_MM',
-    'PORGES_TRIM', 'PWM_MIN', 'PWM_NULLA', 'PWM_PER_MMS', 'ROBOT',
+    'BAL_TRIM', 'FEK_ELLEN_PWM', 'KOREOGRAFIA', 'MM_PER_IMP_BAL', 'MM_PER_IMP_JOBB', 'NYOMTAV_MM',
+    'PORGES_LASSITAS_MM', 'PORGES_OFFSET_FOK', 'PORGES_PWM', 'PORGES_TRIM', 'PORGES_TRIM_BAL', 'PORGES_TRIM_JOBB', 'PWM_MIN', 'PWM_NULLA', 'PWM_PER_MMS', 'ROBOT', 'TEMPO',
   ]);
   assert.equal(found.filter((x) => x === 'ROBOT').length, 2, 'header comment and #define');
 });

@@ -24,6 +24,7 @@ const target = join(here, '..', 'templates', 'show_template.txt');
 export const CALIBRATION_CONSTS = [
   'MM_PER_IMP_BAL', 'MM_PER_IMP_JOBB', 'PWM_PER_MMS', 'PWM_NULLA',
   'NYOMTAV_MM', 'PORGES_TRIM', 'BAL_TRIM', 'PWM_MIN',
+  'PORGES_PWM', 'PORGES_TRIM_BAL', 'PORGES_TRIM_JOBB', 'PORGES_OFFSET_FOK', 'PORGES_LASSITAS_MM', 'FEK_ELLEN_PWM', 'TEMPO',
 ];
 
 /** Blocks whose text differs between the template and SHOW_robot1.txt. */

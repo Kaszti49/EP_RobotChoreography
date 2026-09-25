@@ -22,7 +22,7 @@ test('emits a complete sketch for robot 1 with its calibration filled in', () =>
   assert.match(txt, /const float PWM_PER_MMS = 0\.14500;/);
   assert.match(txt, /const float PWM_NULLA   = 9\.30;/);
   assert.match(txt, /const float NYOMTAV_MM  = 148\.3;/);
-  assert.match(txt, /const float PORGES_TRIM = 1\.00;/);
+  assert.match(txt, /const float PORGES_TRIM = 1\.000;/);
   assert.match(txt, /const float BAL_TRIM = 0\.996;/);
   assert.match(txt, /const int PWM_MIN = 35;/);
   assert.ok(!/@@/.test(txt), 'no placeholder left');
@@ -45,9 +45,13 @@ test('blocks 3, 4, 5, 7, 8 and the preamble are byte-identical to the template; 
     assert.deepEqual(trimEnd(emitted.blocks.get(n)), trimEnd(source.blocks.get(n)), `block ${n} differs from SHOW_robot1.txt`);
   }
   // block 2 differs from the template only by the numbers, and from the
-  // source by robot 1's re-measured speed line (2026-09-13)
+  // source by robot 1's re-measured speed line (2026-09-13) plus the four
+  // spin/brake/tempo tunables added 2026-09-21 (30 lines, see CALIBRATION_DEFAULTS)
   assert.deepEqual(emitted.blocks.get(1), source.blocks.get(1));
-  assert.equal(emitted.blocks.get(2).length, source.blocks.get(2).length);
+  assert.equal(emitted.blocks.get(2).length, template.blocks.get(2).length);
+  assert.equal(emitted.blocks.get(2).length, source.blocks.get(2).length + 30);
+  assert.match(emitted.blocks.get(2).join('\n'), /const int PORGES_PWM = 0;\n/, 'robot 1 keeps the block-3 spin PWM');
+  assert.match(emitted.blocks.get(2).join('\n'), /const int FEK_ELLEN_PWM = 0;\n/, 'robot 1 keeps the proportional brake');
   assert.deepEqual(emitted.preamble, template.preamble.map((l) => l.replace('ROBOT @@ROBOT@@', 'ROBOT 1')));
 });
 
@@ -67,10 +71,13 @@ test('block 6 has one lepes_kezd / lepes_var pair per beat with the beat duratio
 });
 
 test('refuses robots with null calibration, with a clear message', () => {
-  const { compiled, deps: d } = deps();
-  // which robots are calibrated follows robots.json (a bring-up flips one), so derive it
-  const calibrated = d.robots.robots.filter((r) => r.calibration).map((r) => String(r.id));
-  const uncalibrated = d.robots.robots.filter((r) => !r.calibration).map((r) => String(r.id));
+  const { compiled, deps: d0 } = deps();
+  // which robots are calibrated follows robots.json (a bring-up flips one), so derive it --
+  // and since 2026-09-21 every robot may be calibrated, null out the last one in a copy
+  const robots = d0.robots.robots.map((r, i, a) => (i === a.length - 1 ? { ...r, calibration: null } : r));
+  const d = { ...d0, robots: { ...d0.robots, robots } };
+  const calibrated = robots.filter((r) => r.calibration).map((r) => String(r.id));
+  const uncalibrated = robots.filter((r) => !r.calibration).map((r) => String(r.id));
   assert.ok(uncalibrated.length > 0, 'test needs at least one robot with null calibration');
   for (const id of uncalibrated.map(Number)) {
     assert.throws(() => emitRobot(compiled, id, d), (e) => e instanceof EmitError && e.robot === id && /no calibration yet/.test(e.message));

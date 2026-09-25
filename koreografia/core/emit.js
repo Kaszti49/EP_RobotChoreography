@@ -31,9 +31,29 @@ export const CALIBRATION_FORMAT = Object.freeze({
   PWM_PER_MMS: (v) => v.toFixed(5),
   PWM_NULLA: (v) => v.toFixed(2),
   NYOMTAV_MM: (v) => v.toFixed(1),
-  PORGES_TRIM: (v) => v.toFixed(2),
+  PORGES_TRIM: (v) => v.toFixed(3),
   BAL_TRIM: (v) => v.toFixed(3),
   PWM_MIN: (v) => String(Math.round(v)),
+  PORGES_PWM: (v) => String(Math.round(v)),
+  PORGES_TRIM_BAL: (v) => v.toFixed(3),
+  PORGES_TRIM_JOBB: (v) => v.toFixed(3),
+  PORGES_OFFSET_FOK: (v) => v.toFixed(1),
+  PORGES_LASSITAS_MM: (v) => v.toFixed(1),
+  FEK_ELLEN_PWM: (v) => String(Math.round(v)),
+  TEMPO: (v) => v.toFixed(2),
+});
+
+// Block-2 constants a robots.json entry may leave out (added 2026-09-21 for
+// robot 5's spin tuning). These defaults hand control back to block 3, so a
+// robot without them drives exactly as before.
+export const CALIBRATION_DEFAULTS = Object.freeze({
+  PORGES_PWM: 0,          // 0 = spin PWM from PORGES_MM_S
+  PORGES_TRIM_BAL: 1,     // per-direction trim on top of PORGES_TRIM
+  PORGES_TRIM_JOBB: 1,
+  PORGES_OFFSET_FOK: 0,   // degrees subtracted from every spin (fixed stop overshoot)
+  PORGES_LASSITAS_MM: 0,  // slow-zone length in a spin; 0 = block-3 LASSITAS_MM
+  FEK_ELLEN_PWM: 0,       // 0 = speed-proportional brake (FEK_PWM)
+  TEMPO: 1,               // multiplier on SEBESSEG_MM_S / PORGES_MM_S for this robot only
 });
 
 /** The emitted sketches are ASCII only (serial/BT log safety). */
@@ -62,13 +82,14 @@ export function checkCalibration(robotEntry) {
       { robot: robotEntry.id },
     );
   }
+  const full = { ...CALIBRATION_DEFAULTS, ...cal };
   for (const name of Object.keys(CALIBRATION_FORMAT)) {
-    const v = cal[name];
+    const v = full[name];
     if (typeof v !== 'number' || !Number.isFinite(v)) {
       throw new EmitError(`robot ${robotEntry.id}: calibration.${name} is missing or not a number`, { robot: robotEntry.id });
     }
   }
-  return cal;
+  return full;
 }
 
 function checkValidation(validation) {

@@ -1,5 +1,5 @@
 // =====================================================================
-//  SHOW -- ROBOT @@ROBOT@@   (v6)
+//  SHOW -- ROBOT 5   (v6)
 //  Enkoderes koreografia vonal nelkul, kerekenkent szinkronizalva.
 //
 //  EZ A FAJL KET RESZBOL ALL:
@@ -72,7 +72,7 @@
 
 // ============ 1. MELYIK ROBOT VAGYOK ============
 
-#define ROBOT @@ROBOT@@
+#define ROBOT 5
 
 
 // =====================================================================
@@ -81,55 +81,25 @@
 // =====================================================================
 
 // --- T1 tolasi teszt + T5 hajtott egyenes ---
-const float MM_PER_IMP_BAL  = @@MM_PER_IMP_BAL@@;
-const float MM_PER_IMP_JOBB = @@MM_PER_IMP_JOBB@@;
+const float MM_PER_IMP_BAL  = 0.34582;
+const float MM_PER_IMP_JOBB = 0.34392;
 
 // --- T7 sebessegmeres: PWM = PWM_PER_MMS * v + PWM_NULLA ---
 //     ELOZETES ertek a T2 D-fazisabol illesztve. Futtasd a T7-et
 //     es ird felul -- ez a ket szam teszi egyformava az ot robotot.
-const float PWM_PER_MMS = @@PWM_PER_MMS@@;
-const float PWM_NULLA   = @@PWM_NULLA@@;
+const float PWM_PER_MMS = 0.14500;
+const float PWM_NULLA   = 9.30;
 
 // --- porges: HANGOLT szam, nem fizikai nyomtav (a csuszast is tartalmazza)
-const float NYOMTAV_MM  = @@NYOMTAV_MM@@;
-const float PORGES_TRIM = @@PORGES_TRIM@@;   // tul sokat porog -> 0,985 | keveset -> 1,015
+const float NYOMTAV_MM  = 158.6;
+const float PORGES_TRIM = 1.00;    // tul sokat porog -> 0,98 | keveset -> 1,02
 
 // --- egyenes futas arany-finomitasa (1,000 = nincs javitas)
 //     farat BALRA tolja -> 0,996 | JOBBRA -> 1,004 | egy lepes ~4 mm/meter
-const float BAL_TRIM = @@BAL_TRIM@@;
+const float BAL_TRIM = 1.020;
 
 // --- holtsav (T2 C fazis): bal 20/40, jobb 25/20 -> a legrosszabb 40
-const int PWM_MIN = @@PWM_MIN@@;            // ez ala semmilyen szamitas nem viheti
-
-// --- porges es fek finomhangolas (2026-09-21, robot 5). 0 / 1,00 = a
-//     3. blokk kozos beallitasa ervenyes, a tobbi robot igy fut.
-//     PORGES_PWM: >0 = ez a PWM az alap porgesben a PORGES_MM_S-bol
-//     szamolt helyett. Nagyobb alap: a terhelt (hatra halado) kerek
-//     azonnal kap nyomatekot, es a szinkronnak van hova levinnie a
-//     sieto szabad kereket (a PWM_MIN alatt nem mehet).
-const int PORGES_PWM = @@PORGES_PWM@@;
-//     iranyfuggo trim a PORGES_TRIM-en FELUL: balra keveset fordul ->
-//     _BAL 1,02 | jobbra sokat -> _JOBB 0,98. A naplo "cel" oszlopa a
-//     trim NELKULI cel, az enkoder-osszeg a cel x trim koze all be.
-const float PORGES_TRIM_BAL  = @@PORGES_TRIM_BAL@@;
-const float PORGES_TRIM_JOBB = @@PORGES_TRIM_JOBB@@;
-//     PORGES_OFFSET_FOK: FIX fok, amit MINDEN porgesbol levonunk -- a
-//     megallas (rafutas + fek alatti csuszas) minden porgesnel ugyanannyi
-//     fokot ad hozza, a kicsiknel ez a fo hiba. 45 fok 8-cal tul -> 6.
-const float PORGES_OFFSET_FOK = @@PORGES_OFFSET_FOK@@;
-//     PORGES_LASSITAS_MM: a lassu szakasz hossza PORGESBEN (0 = a kozos
-//     LASSITAS_MM). Egy 90 fokos fordulat 123 mm kerekenkent, azaz 100-as
-//     lassitassal szinte vegig kuszas -- a terhelt kerek ott megall es
-//     rangat (robot 2: 90/180 fok 10-15-tel rovid, a 720 pontos). 30-cal
-//     a kis fordulat is sebesseggel megy, mint a nagy.
-const float PORGES_LASSITAS_MM = @@PORGES_LASSITAS_MM@@;
-//     FEK_ELLEN_PWM: >0 = FIX ellen-hajtas ennyi PWM-mel, amig a kerek
-//     meg nem all (a sebessegaranyos FEK_PWM helyett). Erosebb, de a
-//     lezart kereken a robot megcsuszhat -- padlon ellenorizd.
-const int FEK_ELLEN_PWM = @@FEK_ELLEN_PWM@@;
-//     TEMPO: a 3. blokk SEBESSEG_MM_S / PORGES_MM_S szorzoja CSAK ezen a
-//     roboton (1,0 = a kozos tempo). Probahoz: 1,5 = masfelszeres.
-const float TEMPO = @@TEMPO@@;
+const int PWM_MIN = 45;            // ez ala semmilyen szamitas nem viheti
 
 
 // =====================================================================
@@ -175,9 +145,9 @@ int hatarol(int v, int also, int felso) {
   return v;
 }
 
-// mm/s -> PWM, a robot sajat mert egyenesevel (es sajat TEMPO-javal)
+// mm/s -> PWM, a robot sajat mert egyenesevel
 int pwm_sebessegbol(float mm_s) {
-  int p = (int)(PWM_PER_MMS * mm_s * TEMPO + PWM_NULLA + 0.5);
+  int p = (int)(PWM_PER_MMS * mm_s + PWM_NULLA + 0.5);
   return hatarol(p, PWM_MIN, PWM_PLAFON);
 }
 
@@ -202,8 +172,8 @@ void fekez(int irB, int irJ) {
     allB = (vB <= 1) ? allB + 1 : 0;
     allJ = (vJ <= 1) ? allJ + 1 : 0;
     if (allB >= 3 && allJ >= 3) break;
-    int fB = (vB <= 1) ? 1 : (FEK_ELLEN_PWM > 0 ? FEK_ELLEN_PWM : hatarol((int)(FEK_PWM * vB / 8), 1, FEK_PWM));
-    int fJ = (vJ <= 1) ? 1 : (FEK_ELLEN_PWM > 0 ? FEK_ELLEN_PWM : hatarol((int)(FEK_PWM * vJ / 8), 1, FEK_PWM));
+    int fB = (vB <= 1) ? 1 : hatarol((int)(FEK_PWM * vB / 8), 1, FEK_PWM);
+    int fJ = (vJ <= 1) ? 1 : hatarol((int)(FEK_PWM * vJ / 8), 1, FEK_PWM);
     motor(-irB * fB, -irJ * fJ);
   }
   motor(0, 0);
@@ -240,26 +210,12 @@ void mozgas(long cb, long cj, int pwm) {
   long celJ = abszolut(cj);
   int  irB  = (cb >= 0) ? 1 : -1;
   int  irJ  = (cj >= 0) ? 1 : -1;
-
-  // PORGES = a ket kerek ellentetes iranyba megy (porog_fok). Iranyfuggo
-  // trim a celokon (bal kerek hatra = balra porges), es sajat PWM-alap.
-  if (irB != irJ) {
-    float trim = (cb < 0) ? PORGES_TRIM_BAL : PORGES_TRIM_JOBB;
-    float offMm = SHOW_PI * NYOMTAV_MM * (PORGES_OFFSET_FOK / 360.0);   // kerekenkent
-    celB = (long)(celB * trim + 0.5) - imp_bal(offMm);
-    celJ = (long)(celJ * trim + 0.5) - imp_jobb(offMm);
-    if (celB < 0) celB = 0;
-    if (celJ < 0) celJ = 0;
-    if (PORGES_PWM > 0) pwm = hatarol(PORGES_PWM, PWM_MIN, PWM_PLAFON);
-  }
   long celOssz = celB + celJ;
 
-  if (celOssz < 1) { enkoderNullaz(); return; }   // a naplo 0/0-t mutasson, ne a regit
+  if (celOssz < 1) return;
 
-  // a lassu szakasz hossza az OSSZEG terben (mindket kerek LASSITAS_MM-je;
-  // porgesben a robot sajat PORGES_LASSITAS_MM-je, ha van)
-  float lassMm = (irB != irJ && PORGES_LASSITAS_MM > 0) ? PORGES_LASSITAS_MM : LASSITAS_MM;
-  long lassuImp = imp_bal(lassMm) + imp_jobb(lassMm);
+  // a lassu szakasz hossza az OSSZEG terben (mindket kerek LASSITAS_MM-je)
+  long lassuImp = imp_bal(LASSITAS_MM) + imp_jobb(LASSITAS_MM);
   // cel-sebessegek kerekenkent, imp / 10 ms
   float mmPerImp = (MM_PER_IMP_BAL + MM_PER_IMP_JOBB) * 0.5;
   float vCel   = (float)(pwm - PWM_NULLA) / PWM_PER_MMS / mmPerImp / 100.0;
@@ -408,7 +364,13 @@ void jobbra_kor(float k) { porog_fok(+360.0 * k); }
 
 void koreografia() {
 
-@@KOREOGRAFIA@@
+  lepes_kezd();  elore_cm(100.0);      lepes_var(8000);    // [1 elore 1 m] -> (3900, 1800) 90.0 deg  r=127 mm
+  lepes_kezd();                        lepes_var(1000);    // [2 all] hold -> (3900, 1800) 90.0 deg  r=127 mm
+  lepes_kezd();  hatra_cm(100.0);      lepes_var(8000);    // [3 hatra 1 m] -> (3900, 800) 90.0 deg  r=297 mm
+  lepes_kezd();                        lepes_var(1000);    // [4 all] hold -> (3900, 800) 90.0 deg  r=297 mm
+  lepes_kezd();  balra_fok(1080.0);    lepes_var(16000);   // [5 3 kor balra] -> (3900, 800) 90.0 deg  r=297 mm
+  lepes_kezd();                        lepes_var(1000);    // [6 all] hold -> (3900, 800) 90.0 deg  r=297 mm
+  lepes_kezd();  jobbra_fok(1080.0);   lepes_var(16000);   // [7 3 kor jobbra] -> (3900, 800) 90.0 deg  r=297 mm
 
 }
 
@@ -420,13 +382,11 @@ void koreografia() {
 void indulas() {
   motor(0, 0);
   uzenet("=== SHOW v6 -- robot " + String(ROBOT) + " ===");
-  uzenet("sebesseg " + String(SEBESSEG_MM_S * TEMPO, 0) + " mm/s -> PWM "
+  uzenet("sebesseg " + String(SEBESSEG_MM_S, 0) + " mm/s -> PWM "
          + String(pwm_sebessegbol(SEBESSEG_MM_S))
-         + " | porges " + String(PORGES_MM_S * TEMPO, 0) + " mm/s -> PWM "
-         + String(PORGES_PWM > 0 ? PORGES_PWM : pwm_sebessegbol(PORGES_MM_S))
-         + " | lassu " + String(LASSU_MM_S, 0) + " mm/s | tempo x" + String(TEMPO, 2)
-         + " | fek " + String(FEK_ELLEN_PWM > 0 ? FEK_ELLEN_PWM : FEK_PWM)
-         + (FEK_ELLEN_PWM > 0 ? " fix" : " aranyos"));
+         + " | porges " + String(PORGES_MM_S, 0) + " mm/s -> PWM "
+         + String(pwm_sebessegbol(PORGES_MM_S))
+         + " | lassu " + String(LASSU_MM_S, 0) + " mm/s");
   uzenet("nyomtav " + String(NYOMTAV_MM, 1) + " | szinkron "
          + String(SZINKRON, 1) + " | lassitas " + String(LASSITAS_MM, 0)
          + " mm | rafutas " + String(RAFUTAS_IMP) + " imp | fek PWM "

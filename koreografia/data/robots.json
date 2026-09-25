@@ -4,11 +4,13 @@
     "Source for robot 1: DOKUMENTACIO_robot1.md section 5 (2026-09-08, parquet).",
     "PWM_PER_MMS / PWM_NULLA / PWM_MIN of robot 1: re-measured 2026-09-13 with keret-ep v6 (408 imp/rev) at 10.5 V, PWM 30..120 sweep; PWM 30 already moves (~125 mm/s).",
     "NYOMTAV_MM of robot 1: 143 was tuned for the v5 engine (free wheel dragged). With v6 (exact pulse sums) 3 spins ended short at 143 and 146.5; the user measured 148.3 as exact (2026-09-13; physical track 148).",
-    "Robot 2 (2026-09-13, 9.3 V): speed line from a PWM 50..120 sweep (0.155 / 38.0: deadband ~45-50, right wheel ~20 % faster at equal PWM), PWM_MIN 50; MM_PER_IMP copied from robot 1 (1 m measured right on the floor), BAL_TRIM 1.000 (straight). NYOMTAV 157.0: at 148.3 the spins ended 50 (left) / 70 (right) deg short of 1080 -- this robot slips ~6 % in spins, and unevenly; check its right tyre. Its PWM wires + encoders are crossed -> firmware v7 flag N,-1,1,-1,1,1.",
+    "Robot 2 (2026-09-13, 9.3 V): speed line from a PWM 50..120 sweep (0.155 / 38.0: deadband ~45-50, right wheel ~20 % faster at equal PWM), PWM_MIN 50; MM_PER_IMP copied from robot 1 (1 m measured right on the floor), BAL_TRIM 1.000 (straight). NYOMTAV 157.0: at 148.3 the spins ended 50 (left) / 70 (right) deg short of 1080 -- this robot slips ~6 % in spins, and unevenly; check its right tyre. Its PWM wires + encoders are crossed -> firmware v7 flag N,-1,1,-1,1,1. 2026-09-21 second session: its left encoder cable had come loose (bal=0 on every move, each move ran to the 20 s timeout) -- reseated. Show line run at TEMPO 1.5 (450 mm/s, like robot 5): every move within 15 imp, spins split evenly (base PWM 108 gives the sync room); floor: spins ~10 deg SHORT, slight LEFT drift on straights with the left wheel counting 2 % less -> PORGES_OFFSET_FOK -6 (adds 6 deg per spin) + PORGES_TRIM 1.006, BAL_TRIM 1.015. Run 3: with the +6 deg the 360/720 spins were within +-3 deg but the 90/180 turns were still 10-15 short -- the small turns are made almost entirely of the 100 mm slow zone, where the loaded weak left motor stalls and chatters. New constant PORGES_LASSITAS_MM (slow zone in spins) = 30; still a slight left drift -> BAL_TRIM 1.025.",
     "Robot 3 (2026-09-14, 9.3 V, brought up from a Mac): MM_PER_IMP + speed line copied from robot 1 (1 m forward/back on the mark), BAL_TRIM 1.000 (no drift), PWM_MIN 45. NYOMTAV 152.5: at 148.3 both 3-spin turns ended 30 deg short -> x 1080/1050. Wired like robot 1 (N,-1,1,-1,1,0). Sketch: RobotBaseStats/SHOW_robot3.md.",
     "Robot 4 (2026-09-20, 9.8 V, USB bring-up): N,AUTO -> N,-1,1,-1,1,0 (wired like robot 1; its right encoder GND was unplugged at first -- reseated). G,408,408 -> 409/412. Deadband sweep M,p,p: left unreliable below 40 (94 imp at 30 vs right 451), both track from 50 -> PWM_MIN 45. PWM 50 -> ~280 mm/s, 60 -> ~335 mm/s = robot 1's line, so 0.145/9.30 copied. Floor run 1 at NYOMTAV 148.3 / BAL_TRIM 1.000: 1 m forward ended ~97 cm and drifted slightly LEFT, 1 m back on the mark, both 3-spin turns ~20 deg short -> NYOMTAV 148.3 x 1080/1060 = 151.1, BAL_TRIM 1.004 (left target +0.4 %).",
     "Robot 5: calibration is null until MERESI_MENET.md has been done on them.",
-    "The emitter refuses to produce a file for a robot with null calibration."
+    "The emitter refuses to produce a file for a robot with null calibration.",
+    "Robot 5 (2026-09-21, 9.2 V; REPLACEMENT chassis, the first one had bad encoders): keret-ep v7 over USB (CP2102), B,5, N,AUTO -> N,-1,1,-1,1,0 (both encoders count, wired like robot 1). MM_PER_IMP + speed line copied from robot 1 (1 m landed on the mark), PWM_MIN 45 like robots 3/4. Run 1 at 148.3/1.000: both 3-spin turns 70 deg short -> NYOMTAV 158.6 (x 1080/1010, slips like robot 2); forward metre drifted ~15 cm left with the left wheel rolling 18 mm less than the right -> BAL_TRIM 1.020. Run 2: wheels roll equal forward (1008/1010 mm), every move within 15 imp of its sum target; approved. See RobotBaseStats/SHOW_robot5.md.",
+    "Robot 5 spin tuning (2026-09-21, second session): in the full show run the spins ended on their SUM but split unevenly (720 deg: bal -2786 / jobb 2989 of -2882 / 2898 -- the loaded backward wheel lags, the free forward wheel leads), and on the floor left vs right spins could not both be made exact with one NYOMTAV. Four optional block-2 constants were added to the engine (defaults = old behaviour, robots 1-4 unchanged): PORGES_PWM (spin PWM base instead of the PORGES_MM_S line; 70 here), PORGES_TRIM_BAL / PORGES_TRIM_JOBB (per-direction trim on top of PORGES_TRIM), FEK_ELLEN_PWM (fixed reverse-drive brake instead of the speed-proportional one; 60 here), TEMPO (per-robot multiplier on the block-3 speeds). Run 3 (full show, spin base 70, brake 60, 9.8 V): every move on its sum; on the floor the big spins ended 8-10 deg OVER and the straights drifted slightly LEFT with the wheels counting EQUAL (the loop asked for the 1.02 ratio and never got it: at base 53 the right wheel sits on PWM_MIN). So: PORGES_TRIM 0.985; BAL_TRIM 1.006 (the true straight ratio is ~1.005, not 1.02); PWM_NULLA 26.5 = 300 mm/s at PWM 70 instead of 53, which is the headroom the sync needs (the load controller still regulates the real speed); PORGES_PWM back to 0 (the base is 70 anyway); TEMPO 1.5 = 450 mm/s straights and spins, on the user's request, to feel it. Run 4 (tempo 1.5, trim 0.985): speed approved; the 45/90 deg turns were 5-10 deg off on the floor, the 360/720 spins only ~5 -- a FIXED per-spin overshoot (the stop), not a percentage. New constant PORGES_OFFSET_FOK (degrees subtracted from every spin) = 6, PORGES_TRIM 0.987."
   ],
   "robots": [
     {
@@ -24,7 +26,9 @@
         "NYOMTAV_MM": 148.3,
         "PORGES_TRIM": 1,
         "BAL_TRIM": 0.996,
-        "PWM_MIN": 35
+        "PWM_MIN": 35,
+        "TEMPO": 1.5,
+        "PORGES_OFFSET_FOK": -14
       }
     },
     {
@@ -38,9 +42,12 @@
         "PWM_PER_MMS": 0.155,
         "PWM_NULLA": 38,
         "NYOMTAV_MM": 157,
-        "PORGES_TRIM": 1,
-        "BAL_TRIM": 1,
-        "PWM_MIN": 50
+        "PORGES_TRIM": 1.006,
+        "BAL_TRIM": 1.025,
+        "PWM_MIN": 50,
+        "PORGES_OFFSET_FOK": -12,
+        "PORGES_LASSITAS_MM": 30,
+        "TEMPO": 1.5
       }
     },
     {
@@ -55,8 +62,11 @@
         "PWM_NULLA": 9.3,
         "NYOMTAV_MM": 152.5,
         "PORGES_TRIM": 1,
-        "BAL_TRIM": 1,
-        "PWM_MIN": 45
+        "BAL_TRIM": 0.996,
+        "PWM_MIN": 45,
+        "TEMPO": 1.5,
+        "PORGES_TRIM_BAL": 0.991,
+        "PORGES_TRIM_JOBB": 1.01
       }
     },
     {
@@ -72,15 +82,32 @@
         "NYOMTAV_MM": 151.1,
         "PORGES_TRIM": 1,
         "BAL_TRIM": 1.004,
-        "PWM_MIN": 45
+        "PWM_MIN": 45,
+        "TEMPO": 1.5,
+        "PORGES_OFFSET_FOK": 3
       }
     },
     {
       "id": 5,
       "name": "robot 5",
-      "measured": null,
-      "floor": null,
-      "calibration": null
+      "measured": "2026-09-21",
+      "floor": "parketta",
+      "calibration": {
+        "MM_PER_IMP_BAL": 0.34582,
+        "MM_PER_IMP_JOBB": 0.34392,
+        "PWM_PER_MMS": 0.145,
+        "PWM_NULLA": 26.5,
+        "NYOMTAV_MM": 158.6,
+        "PORGES_TRIM": 0.987,
+        "BAL_TRIM": 1.006,
+        "PWM_MIN": 45,
+        "PORGES_PWM": 0,
+        "PORGES_TRIM_BAL": 1,
+        "PORGES_TRIM_JOBB": 1,
+        "PORGES_OFFSET_FOK": 6,
+        "FEK_ELLEN_PWM": 60,
+        "TEMPO": 1.5
+      }
     }
   ]
 }

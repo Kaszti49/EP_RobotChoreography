@@ -6,8 +6,10 @@
 //
 //    bounds       expanded disc (r + robot radius) stays inside the
 //                 field inset by the margin, sampled DURING each move
-//    clearance    pairwise centre distance > r_i + r_j + 2*radius +
-//                 min_gap, sampled >= N times across each beat using the
+//    clearance    pairwise centre distance > 2*radius + min_gap +
+//                 drift_factor*(r_i + r_j) (config.clearance_drift_factor;
+//                 0 today = planned bodies only, 1 = expanded discs),
+//                 sampled >= N times across each beat using the
 //                 timeline (robots move simultaneously within a beat)
 //    feasibility  sum(estimate) * safety_factor <= duration_ms, and no
 //                 single primitive trips the engine's IDOKORLAT
@@ -94,7 +96,8 @@ export function checkClearance(compiled) {
           const a = states[i];
           const b = states[j];
           const d = distance(a.pose, b.pose);
-          const need = a.uncertainty.r + b.uncertainty.r + 2 * config.robot_radius_mm + config.min_gap_mm;
+          const drift = (config.clearance_drift_factor ?? 1) * (a.uncertainty.r + b.uncertainty.r);
+          const need = drift + 2 * config.robot_radius_mm + config.min_gap_mm;
           if (d < need) {
             reported.add(key);
             out.push(finding(CHECKS.CLEARANCE, 'error',
@@ -191,7 +194,7 @@ export function checkStart(compiled) {
   for (let i = 0; i < robots.length; i++) {
     for (let j = i + 1; j < robots.length; j++) {
       const d = distance(robots[i].start, robots[j].start);
-      const need = 2 * r0 + 2 * config.robot_radius_mm + config.min_gap_mm;
+      const need = (config.clearance_drift_factor ?? 1) * 2 * r0 + 2 * config.robot_radius_mm + config.min_gap_mm;
       if (d < need) {
         out.push(finding(CHECKS.START, 'error',
           d === 0

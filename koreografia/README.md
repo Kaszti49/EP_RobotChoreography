@@ -40,7 +40,8 @@ firmware/     OUR OWN robot framework ("keret-ep") that the emitted show is comp
 data/         robots.json (calibration; robots 1-4 filled, 5 null), example-show.json
 templates/    show_template.txt = THE motion engine (v6) with placeholders; SHOW_robot1.txt is its v5 ancestor
 tools/        build.js (CLI), serve.js (static server + POST /api/compile), make-template.js,
-              keret_stub.h (g++ stub), firmware.js (arduino-cli compile + USB upload)
+              keret_stub.h (g++ stub), firmware.js (arduino-cli compile + USB upload),
+              final-show.js (regenerates ../FINAL_SHOW.md: beat table + every robot's sketch)
 test/         node --test
 ```
 

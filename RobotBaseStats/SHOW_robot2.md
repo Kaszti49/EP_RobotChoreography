@@ -7,6 +7,23 @@ Robot 2's PWM leads and encoder plugs are cross-wired, so it runs firmware **v7*
 saved in its NVS: `N,-1,1,-1,1,1`. Floor result: 1 m straight and right; 3 spins within ~10°.
 Test choreography: `koreografia/data/teszt-1m-3kor.json` (robots 1 and 2 side by side, 1.2 m apart).
 
+## 2026-09-21, second session — the show sketch, tuned on the show itself (APPROVED: "perfect")
+
+Robot 2 ran its own line of `keringo-show.json` alone over Bluetooth (COM10) with
+`tools/run-one.ps1 -Robot 2 -Port COM10`; logs in `koreografia/logs/`, encoder trace by `tools/trace.js`.
+First its **left encoder cable had come loose** (`bal=0` on every move, every move ran to the 20 s timeout, the
+right wheel driving alone) — reseated, `M,80,0` / `M,80,80` then counted 73/0 and 770/967.
+
+| run | change | encoders | floor |
+|---|---|---|---|
+| 1 (9.85 V) | `TEMPO 1.5` (450 mm/s, the same tempo as robot 5), otherwise the old calibration | all 22 moves within 15 imp; spins split evenly (base PWM 108 gives the sync room); straights count 0.98 left/right | spins ~10° **short**; slight drift **left** |
+| 2 (9.77 V) | `PORGES_OFFSET_FOK −6` (adds 6° to every spin), `PORGES_TRIM 1.006`, `BAL_TRIM 1.015` | on target except one 720° right spin +66 imp (free wheel ran away, did not recur); wheel ratio 0.99–1.00 | 360°/720° within ±3°; **90°/180° still 10–15° short**; slight left drift |
+| 3 (9.65 V) | `PORGES_LASSITAS_MM 30` (slow zone in spins; a 90° turn is 123 mm per wheel, so with the common 100 mm it was almost all crawl, where the weak left motor stalls under load), `BAL_TRIM 1.025` | all within 16 imp; small turns now split up to 13 % (walking, 2–3 cm) | **perfect — saved** |
+
+Lessons: the small turns were not a percentage or a fixed-offset problem but a *slow-zone* problem — at crawl
+PWM the loaded wheel of this robot chatters instead of turning the chassis; running the turn at speed fixed it.
+The 720° right spin's one-off +66 imp overshoot at 450 mm/s (proportional brake) is worth watching in rehearsal.
+
 ```cpp
 // =====================================================================
 //  SHOW -- ROBOT 2   (v6)
@@ -102,14 +119,44 @@ const float PWM_NULLA   = 38.00;
 
 // --- porges: HANGOLT szam, nem fizikai nyomtav (a csuszast is tartalmazza)
 const float NYOMTAV_MM  = 157.0;
-const float PORGES_TRIM = 1.00;    // tul sokat porog -> 0,98 | keveset -> 1,02
+const float PORGES_TRIM = 1.006;   // tul sokat porog -> 0,985 | keveset -> 1,015
 
 // --- egyenes futas arany-finomitasa (1,000 = nincs javitas)
 //     farat BALRA tolja -> 0,996 | JOBBRA -> 1,004 | egy lepes ~4 mm/meter
-const float BAL_TRIM = 1.000;
+const float BAL_TRIM = 1.025;
 
 // --- holtsav (T2 C fazis): bal 20/40, jobb 25/20 -> a legrosszabb 40
 const int PWM_MIN = 50;            // ez ala semmilyen szamitas nem viheti
+
+// --- porges es fek finomhangolas (2026-09-21, robot 5). 0 / 1,00 = a
+//     3. blokk kozos beallitasa ervenyes, a tobbi robot igy fut.
+//     PORGES_PWM: >0 = ez a PWM az alap porgesben a PORGES_MM_S-bol
+//     szamolt helyett. Nagyobb alap: a terhelt (hatra halado) kerek
+//     azonnal kap nyomatekot, es a szinkronnak van hova levinnie a
+//     sieto szabad kereket (a PWM_MIN alatt nem mehet).
+const int PORGES_PWM = 0;
+//     iranyfuggo trim a PORGES_TRIM-en FELUL: balra keveset fordul ->
+//     _BAL 1,02 | jobbra sokat -> _JOBB 0,98. A naplo "cel" oszlopa a
+//     trim NELKULI cel, az enkoder-osszeg a cel x trim koze all be.
+const float PORGES_TRIM_BAL  = 1.000;
+const float PORGES_TRIM_JOBB = 1.000;
+//     PORGES_OFFSET_FOK: FIX fok, amit MINDEN porgesbol levonunk -- a
+//     megallas (rafutas + fek alatti csuszas) minden porgesnel ugyanannyi
+//     fokot ad hozza, a kicsiknel ez a fo hiba. 45 fok 8-cal tul -> 6.
+const float PORGES_OFFSET_FOK = -6.0;
+//     PORGES_LASSITAS_MM: a lassu szakasz hossza PORGESBEN (0 = a kozos
+//     LASSITAS_MM). Egy 90 fokos fordulat 123 mm kerekenkent, azaz 100-as
+//     lassitassal szinte vegig kuszas -- a terhelt kerek ott megall es
+//     rangat (robot 2: 90/180 fok 10-15-tel rovid, a 720 pontos). 30-cal
+//     a kis fordulat is sebesseggel megy, mint a nagy.
+const float PORGES_LASSITAS_MM = 30.0;
+//     FEK_ELLEN_PWM: >0 = FIX ellen-hajtas ennyi PWM-mel, amig a kerek
+//     meg nem all (a sebessegaranyos FEK_PWM helyett). Erosebb, de a
+//     lezart kereken a robot megcsuszhat -- padlon ellenorizd.
+const int FEK_ELLEN_PWM = 0;
+//     TEMPO: a 3. blokk SEBESSEG_MM_S / PORGES_MM_S szorzoja CSAK ezen a
+//     roboton (1,0 = a kozos tempo). Probahoz: 1,5 = masfelszeres.
+const float TEMPO = 1.50;
 
 
 // =====================================================================
@@ -155,9 +202,9 @@ int hatarol(int v, int also, int felso) {
   return v;
 }
 
-// mm/s -> PWM, a robot sajat mert egyenesevel
+// mm/s -> PWM, a robot sajat mert egyenesevel (es sajat TEMPO-javal)
 int pwm_sebessegbol(float mm_s) {
-  int p = (int)(PWM_PER_MMS * mm_s + PWM_NULLA + 0.5);
+  int p = (int)(PWM_PER_MMS * mm_s * TEMPO + PWM_NULLA + 0.5);
   return hatarol(p, PWM_MIN, PWM_PLAFON);
 }
 
@@ -182,8 +229,8 @@ void fekez(int irB, int irJ) {
     allB = (vB <= 1) ? allB + 1 : 0;
     allJ = (vJ <= 1) ? allJ + 1 : 0;
     if (allB >= 3 && allJ >= 3) break;
-    int fB = (vB <= 1) ? 1 : hatarol((int)(FEK_PWM * vB / 8), 1, FEK_PWM);
-    int fJ = (vJ <= 1) ? 1 : hatarol((int)(FEK_PWM * vJ / 8), 1, FEK_PWM);
+    int fB = (vB <= 1) ? 1 : (FEK_ELLEN_PWM > 0 ? FEK_ELLEN_PWM : hatarol((int)(FEK_PWM * vB / 8), 1, FEK_PWM));
+    int fJ = (vJ <= 1) ? 1 : (FEK_ELLEN_PWM > 0 ? FEK_ELLEN_PWM : hatarol((int)(FEK_PWM * vJ / 8), 1, FEK_PWM));
     motor(-irB * fB, -irJ * fJ);
   }
   motor(0, 0);
@@ -220,12 +267,26 @@ void mozgas(long cb, long cj, int pwm) {
   long celJ = abszolut(cj);
   int  irB  = (cb >= 0) ? 1 : -1;
   int  irJ  = (cj >= 0) ? 1 : -1;
+
+  // PORGES = a ket kerek ellentetes iranyba megy (porog_fok). Iranyfuggo
+  // trim a celokon (bal kerek hatra = balra porges), es sajat PWM-alap.
+  if (irB != irJ) {
+    float trim = (cb < 0) ? PORGES_TRIM_BAL : PORGES_TRIM_JOBB;
+    float offMm = SHOW_PI * NYOMTAV_MM * (PORGES_OFFSET_FOK / 360.0);   // kerekenkent
+    celB = (long)(celB * trim + 0.5) - imp_bal(offMm);
+    celJ = (long)(celJ * trim + 0.5) - imp_jobb(offMm);
+    if (celB < 0) celB = 0;
+    if (celJ < 0) celJ = 0;
+    if (PORGES_PWM > 0) pwm = hatarol(PORGES_PWM, PWM_MIN, PWM_PLAFON);
+  }
   long celOssz = celB + celJ;
 
-  if (celOssz < 1) return;
+  if (celOssz < 1) { enkoderNullaz(); return; }   // a naplo 0/0-t mutasson, ne a regit
 
-  // a lassu szakasz hossza az OSSZEG terben (mindket kerek LASSITAS_MM-je)
-  long lassuImp = imp_bal(LASSITAS_MM) + imp_jobb(LASSITAS_MM);
+  // a lassu szakasz hossza az OSSZEG terben (mindket kerek LASSITAS_MM-je;
+  // porgesben a robot sajat PORGES_LASSITAS_MM-je, ha van)
+  float lassMm = (irB != irJ && PORGES_LASSITAS_MM > 0) ? PORGES_LASSITAS_MM : LASSITAS_MM;
+  long lassuImp = imp_bal(lassMm) + imp_jobb(lassMm);
   // cel-sebessegek kerekenkent, imp / 10 ms
   float mmPerImp = (MM_PER_IMP_BAL + MM_PER_IMP_JOBB) * 0.5;
   float vCel   = (float)(pwm - PWM_NULLA) / PWM_PER_MMS / mmPerImp / 100.0;
@@ -374,13 +435,49 @@ void jobbra_kor(float k) { porog_fok(+360.0 * k); }
 
 void koreografia() {
 
-  lepes_kezd();  elore_cm(100.0);      lepes_var(8000);    // [1 elore 1 m] -> (2600, 1800) 90.0 deg  r=127 mm
-  lepes_kezd();                        lepes_var(1000);    // [2 all] hold -> (2600, 1800) 90.0 deg  r=127 mm
-  lepes_kezd();  hatra_cm(100.0);      lepes_var(8000);    // [3 hatra 1 m] -> (2600, 800) 90.0 deg  r=297 mm
-  lepes_kezd();                        lepes_var(1000);    // [4 all] hold -> (2600, 800) 90.0 deg  r=297 mm
-  lepes_kezd();  balra_fok(1080.0);    lepes_var(16000);   // [5 3 kor balra] -> (2600, 800) 90.0 deg  r=297 mm
-  lepes_kezd();                        lepes_var(1000);    // [6 all] hold -> (2600, 800) 90.0 deg  r=297 mm
-  lepes_kezd();  jobbra_fok(1080.0);   lepes_var(16000);   // [7 3 kor jobbra] -> (2600, 800) 90.0 deg  r=297 mm
+  lepes_kezd();  elore_cm(30.0);       lepes_var(5000);    // [1 felvonulas] -> (1650, 900) 90.0 deg  r=45 mm
+  lepes_kezd();                                            // [2 szetnyilas a negyzetre] 3 moves in 17000 ms
+                 balra_fok(90.0);                          // [2 szetnyilas a negyzetre] -> (1650, 900) 180.0 deg  r=45 mm
+                 elore_cm(5.0);                            // [2 szetnyilas a negyzetre] -> (1600, 900) 180.0 deg  r=53 mm
+                 balra_fok(180.0);                         // [2 szetnyilas a negyzetre] -> (1600, 900) 0.0 deg  r=53 mm
+                                       lepes_var(17000);   // [2 szetnyilas a negyzetre] end
+  lepes_kezd();                        lepes_var(5000);    // [3 hullam - kozep] hold -> (1600, 900) 0.0 deg  r=53 mm
+  lepes_kezd();                        lepes_var(5000);    // [4 hullam - hatso par] hold -> (1600, 900) 0.0 deg  r=53 mm
+  lepes_kezd();  jobbra_fok(360.0);    lepes_var(5000);    // [5 hullam - elso par] -> (1600, 900) 0.0 deg  r=53 mm
+  lepes_kezd();  jobbra_fok(720.0);    lepes_var(7500);    // [6 mind porog] -> (1600, 900) 0.0 deg  r=53 mm
+  lepes_kezd();                        lepes_var(1000);    // [7 szunet 1] ANCHOR: re-place the robot on its mark by hand -> (1600, 900) 0.0 deg  r=10 mm
+  lepes_kezd();                                            // [8 keringo 1 - kozep balra] 2 moves in 13000 ms
+                 elore_cm(140.0);                          // [8 keringo 1 - kozep balra] -> (3000, 900) 0.0 deg  r=174 mm
+                 balra_fok(90.0);                          // [8 keringo 1 - kozep balra] -> (3000, 900) 90.0 deg  r=174 mm
+                                       lepes_var(13000);   // [8 keringo 1 - kozep balra] end
+  lepes_kezd();                        lepes_var(1000);    // [9 szunet 2] ANCHOR: re-place the robot on its mark by hand -> (3000, 900) 90.0 deg  r=10 mm
+  lepes_kezd();                                            // [10 keringo 2 - kozep jobbra] 2 moves in 13000 ms
+                 elore_cm(140.0);                          // [10 keringo 2 - kozep jobbra] -> (3000, 2300) 90.0 deg  r=174 mm
+                 balra_fok(90.0);                          // [10 keringo 2 - kozep jobbra] -> (3000, 2300) 180.0 deg  r=174 mm
+                                       lepes_var(13000);   // [10 keringo 2 - kozep jobbra] end
+  lepes_kezd();                        lepes_var(1000);    // [11 szunet 3] ANCHOR: re-place the robot on its mark by hand -> (3000, 2300) 180.0 deg  r=10 mm
+  lepes_kezd();  balra_fok(45.0);      lepes_var(6000);    // [12 csillag - befele] -> (3000, 2300) -135.0 deg  r=10 mm
+  lepes_kezd();  elore_cm(25.0);       lepes_var(6000);    // [13 csillag - egy lepes] -> (2823, 2123) -135.0 deg  r=43 mm
+  lepes_kezd();                                            // [14 sorba allas 1 - eleje, vege, beallas] 3 moves in 11500 ms
+                 jobbra_fok(62.1);                         // [14 sorba allas 1 - eleje, vege, beallas] -> (2823, 2123) 162.9 deg  r=43 mm
+                 elore_cm(54.7);                           // [14 sorba allas 1 - eleje, vege, beallas] -> (2300, 2284) 162.9 deg  r=133 mm
+                 balra_fok(107.1);                         // [14 sorba allas 1 - eleje, vege, beallas] -> (2300, 2284) -90.0 deg  r=133 mm
+                                       lepes_var(11500);   // [14 sorba allas 1 - eleje, vege, beallas] end
+  lepes_kezd();                        lepes_var(11500);   // [15 sorba allas 2 - a kozepe] hold -> (2300, 2284) -90.0 deg  r=133 mm
+  lepes_kezd();  elore_cm(30.0);       lepes_var(5000);    // [16 egy lepes a kozonseghez] -> (2300, 1984) -90.0 deg  r=202 mm
+  lepes_kezd();  balra_fok(720.0);     lepes_var(9500);    // [17 zaro porges] -> (2300, 1984) -90.0 deg  r=202 mm
+  lepes_kezd();                        lepes_var(1000);    // [18 szunet 4] ANCHOR: re-place the robot on its mark by hand -> (2300, 1984) -90.0 deg  r=10 mm
+  lepes_kezd();                                            // [19 hazateres 1 - szetnyilik a sor] 3 moves in 16000 ms
+                 jobbra_fok(90.0);                         // [19 hazateres 1 - szetnyilik a sor] -> (2300, 1984) 180.0 deg  r=10 mm
+                 elore_cm(65.0);                           // [19 hazateres 1 - szetnyilik a sor] -> (1650, 1984) 180.0 deg  r=105 mm
+                 balra_fok(90.0);                          // [19 hazateres 1 - szetnyilik a sor] -> (1650, 1984) -90.0 deg  r=105 mm
+                                       lepes_var(16000);   // [19 hazateres 1 - szetnyilik a sor] end
+  lepes_kezd();                        lepes_var(1000);    // [20 szunet 5] ANCHOR: re-place the robot on its mark by hand -> (1650, 1984) -90.0 deg  r=10 mm
+  lepes_kezd();                                            // [21 hazateres 2 - egyutt a rajtjelre] 2 moves in 13000 ms
+                 elore_cm(138.4);                          // [21 hazateres 2 - egyutt a rajtjelre] -> (1650, 600) -90.0 deg  r=173 mm
+                 balra_fok(180.0);                         // [21 hazateres 2 - egyutt a rajtjelre] -> (1650, 600) 90.0 deg  r=173 mm
+                                       lepes_var(13000);   // [21 hazateres 2 - egyutt a rajtjelre] end
+  lepes_kezd();                        lepes_var(2000);    // [22 vege] hold -> (1650, 600) 90.0 deg  r=173 mm
 
 }
 
@@ -392,11 +489,13 @@ void koreografia() {
 void indulas() {
   motor(0, 0);
   uzenet("=== SHOW v6 -- robot " + String(ROBOT) + " ===");
-  uzenet("sebesseg " + String(SEBESSEG_MM_S, 0) + " mm/s -> PWM "
+  uzenet("sebesseg " + String(SEBESSEG_MM_S * TEMPO, 0) + " mm/s -> PWM "
          + String(pwm_sebessegbol(SEBESSEG_MM_S))
-         + " | porges " + String(PORGES_MM_S, 0) + " mm/s -> PWM "
-         + String(pwm_sebessegbol(PORGES_MM_S))
-         + " | lassu " + String(LASSU_MM_S, 0) + " mm/s");
+         + " | porges " + String(PORGES_MM_S * TEMPO, 0) + " mm/s -> PWM "
+         + String(PORGES_PWM > 0 ? PORGES_PWM : pwm_sebessegbol(PORGES_MM_S))
+         + " | lassu " + String(LASSU_MM_S, 0) + " mm/s | tempo x" + String(TEMPO, 2)
+         + " | fek " + String(FEK_ELLEN_PWM > 0 ? FEK_ELLEN_PWM : FEK_PWM)
+         + (FEK_ELLEN_PWM > 0 ? " fix" : " aranyos"));
   uzenet("nyomtav " + String(NYOMTAV_MM, 1) + " | szinkron "
          + String(SZINKRON, 1) + " | lassitas " + String(LASSITAS_MM, 0)
          + " mm | rafutas " + String(RAFUTAS_IMP) + " imp | fek PWM "

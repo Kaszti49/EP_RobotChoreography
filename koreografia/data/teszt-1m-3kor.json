@@ -1,6 +1,6 @@
 {
   "_comment": [
-    "Robot 1-4 tesztje (2026-09-13/14/20): 1 m elore, 1 m hatra, 3 kor balra, 3 kor jobbra -- egymas mellett 1,05 m-re (4,6 m szeles padlo), egyszerre is futtathato.",
+    "Robot 1-5 tesztje (2026-09-13/14/20/21): 1 m elore, 1 m hatra, 3 kor balra, 3 kor jobbra -- egymas mellett 0,8 m-re (4,6 m szeles padlo), egyszerre is futtathato.",
     "Ugyanaz, mint a RobotBaseStats/SHOW_robot1.md 6. blokkja -- ezzel merjuk a motort (padlon: hova ert, mennyit fordult).",
     "Koreografia ful: Teszt betoltese -> -> Kod fulre -> Fordit + Feltolt -> Muszerfal Start."
   ],
@@ -21,7 +21,7 @@
     {
       "id": 2,
       "start": {
-        "x": 1750,
+        "x": 1500,
         "y": 800,
         "theta": 90
       }
@@ -29,7 +29,7 @@
     {
       "id": 3,
       "start": {
-        "x": 2800,
+        "x": 2300,
         "y": 800,
         "theta": 90
       }
@@ -37,7 +37,15 @@
     {
       "id": 4,
       "start": {
-        "x": 3850,
+        "x": 3100,
+        "y": 800,
+        "theta": 90
+      }
+    },
+    {
+      "id": 5,
+      "start": {
+        "x": 3900,
         "y": 800,
         "theta": 90
       }
@@ -64,6 +72,11 @@
           "value": 100
         },
         "4": {
+          "type": "primitive",
+          "op": "elore_cm",
+          "value": 100
+        },
+        "5": {
           "type": "primitive",
           "op": "elore_cm",
           "value": 100
@@ -98,6 +111,11 @@
           "type": "primitive",
           "op": "hatra_cm",
           "value": 100
+        },
+        "5": {
+          "type": "primitive",
+          "op": "hatra_cm",
+          "value": 100
         }
       }
     },
@@ -129,6 +147,11 @@
           "type": "primitive",
           "op": "balra_kor",
           "value": 3
+        },
+        "5": {
+          "type": "primitive",
+          "op": "balra_kor",
+          "value": 3
         }
       }
     },
@@ -157,6 +180,11 @@
           "value": 3
         },
         "4": {
+          "type": "primitive",
+          "op": "jobbra_kor",
+          "value": 3
+        },
+        "5": {
           "type": "primitive",
           "op": "jobbra_kor",
           "value": 3
