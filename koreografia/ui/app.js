@@ -145,7 +145,46 @@ $('btnStopAll').addEventListener('click', async () => {
   try { await serial.broadcast('S'); } catch (e) { log(e.message); }
 });
 
-const ctx = { serial, activeRobot, isConnected, log, setStatus, switchTab, renderLink, firmwareOf: (id) => dashboard.firmwareOf(id) };
+// the header's robot selector follows the sketch in the Kod editor, so
+// Fordit + Feltolt cannot send robot 3's calibration to robot 1
+function setActiveRobot(id) {
+  const sel = $('robotSel');
+  if (![...sel.options].some((o) => o.value === String(id))) return;
+  sel.value = String(id);
+  renderLink();
+}
+
+// the Kod tab's "Show -- robot N" entries: this robot's sketch from the show
+// loaded in this tab, with its robots.json calibration
+async function emitShowFor(id) {
+  if (!state.compiled) throw new Error('nincs show betöltve a Koreográfia fülön');
+  if (!state.validation.ok) throw new Error(`a show-ban ${state.validation.errors.length} hiba van — előbb javítsd a Koreográfia fülön`);
+  const deps = await loadDeps();
+  return emitRobot(state.compiled, id, { ...deps, validation: state.validation });
+}
+
+// Which show a Kod-tab sketch was emitted from. Cheap string hash: it only
+// has to change when the show does, nothing depends on it being a good one.
+function showFingerprint() {
+  const text = state.show ? JSON.stringify(state.show) : '';
+  let h = 0;
+  for (let i = 0; i < text.length; i++) h = (Math.imul(31, h) + text.charCodeAt(i)) | 0;
+  return `${text.length}:${(h >>> 0).toString(36)}`;
+}
+
+// the show's own source: the JSON box on the Koreografia tab
+function focusShowJson() {
+  switchTab('koreo');
+  const el = $('json');
+  el.scrollIntoView({ block: 'nearest' });
+  el.focus();
+  setStatus('Show JSON: szerkeszd, majd Alkalmaz — utána a Kód fülön 🔄 generálja újra a robotok kódját', '');
+}
+
+const ctx = {
+  serial, activeRobot, isConnected, log, setStatus, switchTab, renderLink,
+  firmwareOf: (id) => dashboard.firmwareOf(id), emitShowFor, focusShowJson, setActiveRobot, showFingerprint,
+};
 
 // ---------------------------------------------------------------------
 //  tabs
@@ -183,6 +222,7 @@ function applyShow(show) {
     field.highlight = null;
     timeline.highlightBeat = null;
     draw();
+    codeTab.onShowChanged();   // the Kod tab's generated sketches are older than this show
   } catch (e) {
     const where = e instanceof CompileError ? ` (ütem ${e.beat === null ? '?' : e.beat + 1}, robot ${e.robot ?? '?'})` : '';
     setStatus(`Fordítási hiba: ${e.message}${where}`, 'error');
@@ -204,6 +244,8 @@ $('btnExample').addEventListener('click', loadExample);
 $('btnTest').addEventListener('click', () => loadShowUrl('../data/teszt-1m-3kor.json'));
 // two robots side by side: 1 m out, one spin each way, 1 m back -- for "Start mind"
 $('btnSync').addEventListener('click', () => loadShowUrl('../data/szinkron-teszt.json'));
+// the approved show: all five robots (data/keringo-show.json -> FINAL_SHOW.md)
+$('btnKeringo').addEventListener('click', () => loadShowUrl('../data/keringo-show.json'));
 
 $('fileInput').addEventListener('change', async (e) => {
   const file = e.target.files[0];
@@ -262,18 +304,11 @@ $('btnEmit').addEventListener('click', async () => {
   }
 });
 
-// the active robot's emitted sketch -> Kod tab editor
+// the active robot's emitted sketch -> its own buffer in the Kod tab
 $('btnToCode').addEventListener('click', async () => {
   if (!emitGuard()) return;
-  const id = activeRobot();
-  try {
-    const deps = await loadDeps();
-    const txt = emitRobot(state.compiled, id, { ...deps, validation: state.validation });
-    codeTab.setCode(txt, `koreográfia → robot ${id}`);
-    switchTab('kod');
-  } catch (e) {
-    setStatus(`robot ${id}: ${e.message}`, 'error');
-  }
+  switchTab('kod');
+  await codeTab.loadRobot(activeRobot(), { fresh: true });
 });
 
 // ---------------------------------------------------------------------
@@ -405,6 +440,7 @@ renderRobotSelect();
 fetch('../data/robots.json', { cache: 'no-store' }).then((r) => r.json()).then((j) => {
   state.robots = j.robots.map((r) => r.id);
   renderRobotSelect();
+  codeTab.setRobots(state.robots);   // "Show -- robot N" entries in the Kod tab
 }).catch(() => {});
 
 resize();

@@ -21,6 +21,7 @@
   .status.ok { color: var(--ok); } .status.error { color: var(--err); } .status.warning { color: var(--warn); }
   .pill { font: 12px ui-monospace, monospace; padding: 3px 8px; border-radius: 4px; background: var(--panel2); border: 1px solid var(--line); color: var(--muted); }
   .pill.on { color: var(--ok); border-color: var(--ok); }
+  .pill.warn { color: var(--warn); border-color: var(--warn); }
   button, input, select, textarea { font: inherit; color: var(--ink); }
   button { padding: 5px 11px; border: 1px solid var(--line); background: var(--panel2); border-radius: 6px; cursor: pointer; white-space: nowrap; }
   button:hover { background: #262c36; }
@@ -140,6 +141,7 @@
       <button id="btnExample">Példa betöltése</button>
       <button id="btnTest" title="robot 1 és 2: 1 m előre, 1 m hátra, 3 kör balra, 3 kör jobbra (data/teszt-1m-3kor.json)">Teszt betöltése</button>
       <button id="btnSync" title="két robot egyszerre: 1 m előre, 1 kör balra, 1 kör jobbra, 1 m hátra (data/szinkron-teszt.json)">Szinkron-teszt betöltése</button>
+      <button id="btnKeringo" title="a végleges show mind az 5 robotra (data/keringo-show.json)">Keringő betöltése</button>
       <button id="btnSave">JSON mentése</button>
       <button id="btnEmit">Arduino .txt letöltése</button>
       <button id="btnToCode" title="A kiválasztott robot kódja a Kód fülre">→ Kód fülre</button>
@@ -176,7 +178,9 @@
   <!-- ================= KÓD ================= -->
   <section id="tab-kod" class="tab">
     <div class="toolbar">
-      <label class="muted">Példa: <select id="codeExample"><option value="">— válassz —</option></select></label>
+      <label class="muted">Kód: <select id="codeExample"><option value="">— válassz —</option></select></label>
+      <span class="pill" id="codeBuffer">szabad kód</span>
+      <button id="btnCodeRegen" disabled title="a robot kódjának újragenerálása a betöltött koreográfiából — a kézi módosítások elvesznek">🔄 Újra a show-ból</button>
       <button id="btnCodeSave">💾 Mentés</button>
       <button id="btnCodeLoad">📂 Betöltés</button>
       <input type="file" id="codeFile" accept=".ino,.txt,.cpp,.c,.h" hidden>

@@ -163,6 +163,19 @@ and *Feltölt a robotra* sends the image over Bluetooth. Block 6 of the emitted 
 comment per line with the beat name and the intended pose, so it can be diffed against the
 plan.
 
+The tab's **Kód** dropdown is also its buffer switcher. Under *SHOW* it offers the show's own
+source (*Show JSON*, which jumps to the JSON box on the Koreográfia tab) and **each robot's
+sketch separately** — *Show — robot 1…5*. Picking one emits that robot's file from the show
+currently loaded and opens it in **its own buffer**, so a hand tweak on robot 3 is still there
+after a look at robot 4, and after a reload. The header's robot selector follows the buffer,
+and an upload to a different robot asks first — block 2 is that one robot's calibration.
+*🔄 Újra a show-ból* discards the tweaks and regenerates; until then the buffer's pill says
+whether it was hand-edited and whether the show has changed since it was generated. The
+learning examples share one separate free-hand buffer, so they never overwrite a robot's sketch.
+The Koreográfia tab's **Keringő betöltése** loads the approved show (`data/keringo-show.json`,
+the one `FINAL_SHOW.md` is generated from) — the five robot sketches come from whatever is
+loaded there.
+
 **Firmware and Bluetooth — our own stack.** The camp framework's source and compile server
 are unavailable, so `firmware/robot/robot.ino` is our own re-implementation of its API on
 the documented pinout, with a documented OTA protocol (`transport/README.md`). Flow:

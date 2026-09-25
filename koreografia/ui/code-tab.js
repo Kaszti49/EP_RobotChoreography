@@ -7,10 +7,20 @@
 //  The editor is a plain textarea with a line-number gutter; the
 //  content survives reloads in localStorage. Compiler diagnostics are
 //  listed under the editor, line numbers are clickable.
+//
+//  There is one buffer per show robot plus a free-hand one, and the
+//  dropdown switches between them: "Show -- robot 3" brings up robot 3's
+//  sketch, emitted from the choreography the first time and with your own
+//  edits every time after. Each robot's tweaks are kept separately, so the
+//  five sketches can drift apart on purpose (robot 3's dead right motor,
+//  a per-robot trim) without a regenerate wiping them.
 // =====================================================================
 
 const $ = (id) => document.getElementById(id);
 const STORAGE_KEY = 'koreografia.code';
+const SCRATCH = 'scratch';                       // the free-hand buffer (examples, experiments)
+const ACTIVE_KEY = `${STORAGE_KEY}.active`;      // which buffer was open at the last reload
+const bufKey = (b) => (b === SCRATCH ? STORAGE_KEY : `${STORAGE_KEY}.robot${b}`);
 
 const BLANK = `// Ket fuggvenyt irsz: indulas() egyszer fut a Start-ra,
 // vezerles() 20 ms-onkent, amig a feladat fut (Stop = S).
@@ -68,7 +78,8 @@ void vezerles() {
 ];
 
 export function initCodeTab(ctx) {
-  const { serial, activeRobot, isConnected, log, setStatus, firmwareOf } = ctx;
+  const { serial, activeRobot, isConnected, log, setStatus, firmwareOf,
+    emitShowFor, focusShowJson, setActiveRobot, showFingerprint } = ctx;
   const code = $('code');
   const gutter = $('gutter');
   const out = $('codeOut');
@@ -76,6 +87,9 @@ export function initCodeTab(ctx) {
   let lastBinFor = '';   // the code it was compiled from
   let busy = false;
   let errorLines = new Set();
+  let buffer = SCRATCH;         // SCRATCH or a robot id
+  let robotIds = [1, 2, 3, 4, 5];
+  const staleShow = new Set();  // robot ids whose sketch came from an older version of the show
 
   // ---- editor -------------------------------------------------------
   function renderGutter() {
@@ -104,14 +118,14 @@ export function initCodeTab(ctx) {
   let saveTimer = null;
   function scheduleSave() {
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => localStorage.setItem(STORAGE_KEY, code.value), 400);
+    saveTimer = setTimeout(() => localStorage.setItem(bufKey(buffer), code.value), 400);
   }
 
   function setCode(text, label) {
     code.value = text;
     errorLines = new Set();
     renderGutter();
-    localStorage.setItem(STORAGE_KEY, text);
+    localStorage.setItem(bufKey(buffer), text);
     $('btnUpload').disabled = true;
     if (label) say(`betöltve: ${label}`);
   }
@@ -126,23 +140,143 @@ export function initCodeTab(ctx) {
     code.scrollTop = Math.max(0, (line - 4) * lineHeight);
   }
 
-  // ---- examples / save / load -------------------------------------
+  // ---- buffers ------------------------------------------------------
+  //  The dropdown is the buffer switcher: the learning examples go to the
+  //  free-hand buffer, "Show -- robot N" to that robot's own one. Switching
+  //  saves the buffer you are leaving, so nothing typed is lost.
   const sel = $('codeExample');
-  for (const ex of EXAMPLES) {
-    const o = document.createElement('option');
-    o.value = ex.id;
-    o.textContent = ex.label;
-    sel.appendChild(o);
+  const bufPill = $('codeBuffer');
+
+  //  Three things per robot in localStorage: the editable buffer, the text as
+  //  it was emitted, and which show it came from -- the last two are what tell
+  //  a hand tweak from a fresh sketch after a reload.
+  const readBuf = (b) => localStorage.getItem(bufKey(b));
+  const saveBuf = () => localStorage.setItem(bufKey(buffer), code.value);
+  const readGen = (id) => localStorage.getItem(`${bufKey(id)}.gen`);
+  const hasBuf = (id) => Boolean(readBuf(id)?.trim());
+  const isTweaked = (id) => hasBuf(id) && readBuf(id) !== readGen(id);
+  function rememberGen(id, text) {
+    localStorage.setItem(`${bufKey(id)}.gen`, text);
+    localStorage.setItem(`${bufKey(id)}.show`, showFingerprint?.() ?? '');
   }
+
+  function buildOptions() {
+    sel.innerHTML = '<option value="">— válassz —</option>';
+    const groups = [
+      ['Tanuló példák (szabad kód)', EXAMPLES.map((ex) => [`ex:${ex.id}`, ex.label])],
+      ['SHOW — a betöltött koreográfiából', [
+        ['show-json', 'Show JSON — a koreográfia forrása (Koreográfia fül) →'],
+        ...robotIds.map((id) => [`robot:${id}`, `Show — robot ${id} kódja`]),
+      ]],
+    ];
+    for (const [name, items] of groups) {
+      const g = document.createElement('optgroup');
+      g.label = name;
+      for (const [value, label] of items) {
+        const o = document.createElement('option');
+        o.value = value;
+        o.textContent = label;
+        g.appendChild(o);
+      }
+      sel.appendChild(g);
+    }
+  }
+
+  function renderBuffer() {
+    const robot = buffer !== SCRATCH;
+    const stale = robot && staleShow.has(buffer);
+    bufPill.textContent = robot
+      ? `SHOW · robot ${buffer}${isTweaked(buffer) ? ' · kézi módosítás' : ''}${stale ? ' · a show azóta változott' : ''}`
+      : 'szabad kód';
+    bufPill.className = `pill ${robot ? (stale ? 'warn' : 'on') : ''}`;
+    bufPill.title = robot
+      ? `A szerkesztőben robot ${buffer} show-kódja van; a többi robot kódja külön megmarad.`
+      : 'Szabad kód (példák, kísérletek) — nem a show kódja.';
+    $('btnCodeRegen').disabled = busy || !robot;
+  }
+
+  /** Save the current buffer, open another one (a compiled image belongs to one buffer only). */
+  function switchBuffer(name) {
+    if (name === buffer) return;
+    saveBuf();
+    buffer = name;
+    localStorage.setItem(ACTIVE_KEY, String(name));
+    code.value = readBuf(name) ?? (name === SCRATCH ? BLANK : '');
+    errorLines = new Set();
+    renderGutter();
+    lastBin = null;
+    lastBinFor = '';
+    setButtons();
+    renderBuffer();
+  }
+
+  /**
+   * Open robot `id`'s show sketch. Without `fresh` it is whatever is in that
+   * buffer (your tweaks); with `fresh` it is re-emitted from the loaded show.
+   */
+  async function loadRobot(id, { fresh = false } = {}) {
+    if (fresh && isTweaked(id)
+      && !confirm(`Robot ${id} kódján kézi módosítások vannak. Újragenerálod a show-ból? A módosítások elvesznek.`)) return;
+    if (!fresh && hasBuf(id)) {
+      switchBuffer(id);
+      setActiveRobot?.(id);
+      say(`robot ${id} kódja${isTweaked(id) ? ' (kézi módosításokkal)' : ''}`
+        + `${staleShow.has(id) ? ' — a koreográfia azóta változott, "🔄 Újra a show-ból" frissíti' : ''}`);
+      renderBuffer();
+      return;
+    }
+    let text;
+    try {
+      text = await emitShowFor(id);
+    } catch (e) {
+      say(`robot ${id}: ${e.message}`, 'error');
+      setStatus(`robot ${id}: ${e.message}`, 'error');
+      return;
+    }
+    switchBuffer(id);
+    setCode(text);
+    rememberGen(id, text);
+    staleShow.delete(id);
+    setActiveRobot?.(id);
+    renderBuffer();
+    say(`robot ${id} kódja a betöltött koreográfiából (${text.split('\n').length} sor). Szerkeszd nyugodtan: `
+      + 'a módosításaid ebben a pufferben maradnak, a többi robot kódját nem érintik.', 'ok');
+  }
+
+  /** The show was (re)loaded or edited: sketches emitted from an older one are stale. */
+  function onShowChanged() {
+    const now = showFingerprint?.() ?? '';
+    for (const id of robotIds) {
+      const from = localStorage.getItem(`${bufKey(id)}.show`);
+      if (from === now) staleShow.delete(id);
+      else if (hasBuf(id) && from !== null) staleShow.add(id);
+    }
+    renderBuffer();
+  }
+
+  /** The robot ids offered in the dropdown (from robots.json, once it is loaded). */
+  function setRobots(ids) {
+    robotIds = ids.slice();
+    buildOptions();
+    if (buffer !== SCRATCH) setActiveRobot?.(buffer);   // the header follows the reopened buffer
+    renderBuffer();
+  }
+
   sel.addEventListener('change', async () => {
-    const ex = EXAMPLES.find((x) => x.id === sel.value);
+    const value = sel.value;
     sel.value = '';
+    if (!value) return;
+    if (value === 'show-json') { focusShowJson?.(); return; }
+    if (value.startsWith('robot:')) { await loadRobot(Number(value.slice(6))); return; }
+    const ex = EXAMPLES.find((x) => `ex:${x.id}` === value);
     if (!ex) return;
-    // only ask when there is something of the user's own to lose
-    const untouched = !code.value.trim() || code.value === BLANK || code.value === localStorage.getItem(`${STORAGE_KEY}.example`);
-    if (!untouched && !confirm('A szerkesztő tartalma felülíródik. Folytatod?')) return;
+    // only ask when there is something of the user's own to lose in the free-hand buffer
+    const scratch = readBuf(SCRATCH) ?? '';
+    const untouched = !scratch.trim() || scratch === BLANK || scratch === localStorage.getItem(`${STORAGE_KEY}.example`);
+    if (!untouched && !confirm('A szabad kód puffer tartalma felülíródik. Folytatod?')) return;
     try {
       const text = ex.text ?? await (await fetch(ex.url, { cache: 'no-store' })).text();
+      switchBuffer(SCRATCH);
       setCode(text, ex.label);
       localStorage.setItem(`${STORAGE_KEY}.example`, text);
     } catch (e) {
@@ -150,11 +284,15 @@ export function initCodeTab(ctx) {
     }
   });
 
+  $('btnCodeRegen').addEventListener('click', () => {
+    if (buffer !== SCRATCH) loadRobot(buffer, { fresh: true });
+  });
+
   $('btnCodeSave').addEventListener('click', () => {
     const blob = new Blob([code.value], { type: 'text/plain' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `show_robot${activeRobot()}.ino`;
+    a.download = buffer === SCRATCH ? 'kod.ino' : `SHOW_robot${buffer}.ino`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   });
@@ -252,8 +390,15 @@ export function initCodeTab(ctx) {
   // ---- upload ------------------------------------------------------
   const TABOR_HINT = 'a roboton a TÁBORI keret fut, az nem érti a mi Bluetooth-feltöltésünket. Egyszer USB-n kell telepíteni a saját keretet (lent: USB-telepítés), utána már megy Bluetooth-on.';
 
-  async function uploadImage(bin, what) {
+  async function uploadImage(bin, what, { fromEditor = false } = {}) {
     const id = activeRobot();
+    // the editor holds one robot's show sketch; its block 2 is that robot's
+    // calibration, so sending it to another robot drives visibly wrong
+    if (fromEditor && buffer !== SCRATCH && buffer !== id
+      && !confirm(`A szerkesztőben robot ${buffer} show-kódja van, de robot ${id}-re töltenél fel. Biztosan folytatod?`)) {
+      say(`megszakítva: a szerkesztőben robot ${buffer} kódja van, a kiválasztott robot ${id}.`, 'error');
+      return false;
+    }
     if (!isConnected(id)) {
       say(`robot ${id} nincs csatlakoztatva — fent: Csatlakozás.`, 'error');
       setStatus(`robot ${id} nincs csatlakoztatva`, 'error');
@@ -297,6 +442,7 @@ export function initCodeTab(ctx) {
   }
 
   function setButtons() {
+    $('btnCodeRegen').disabled = busy || buffer === SCRATCH;
     $('btnCompile').disabled = busy;
     $('btnCompileUpload').disabled = busy;
     $('btnUpload').disabled = busy || !(lastBin && code.value === lastBinFor);
@@ -362,11 +508,11 @@ export function initCodeTab(ctx) {
   });
 
   $('btnCompile').addEventListener('click', compile);
-  $('btnUpload').addEventListener('click', () => lastBin && uploadImage(lastBin, 'Feltöltés'));
+  $('btnUpload').addEventListener('click', () => lastBin && uploadImage(lastBin, 'Feltöltés', { fromEditor: true }));
   $('btnCompileUpload').addEventListener('click', async () => {
     const id = activeRobot();
     if (!isConnected(id)) { say(`robot ${id} nincs csatlakoztatva — előbb Csatlakozás, aztán Fordít + Feltölt.`, 'error'); return; }
-    if (await compile()) await uploadImage(lastBin, 'Feltöltés');
+    if (await compile()) await uploadImage(lastBin, 'Feltöltés', { fromEditor: true });
   });
   window.addEventListener('keydown', (e) => {
     if (!(e.ctrlKey || e.metaKey)) return;
@@ -401,12 +547,17 @@ export function initCodeTab(ctx) {
   window.addEventListener('keydown', (e) => { if (e.key === 'Escape') $('helpPanel').hidden = true; });
 
   // ---- startup -----------------------------------------------------
-  code.value = localStorage.getItem(STORAGE_KEY) ?? BLANK;
+  // reopen the buffer that was in the editor at the last reload
+  const wasActive = localStorage.getItem(ACTIVE_KEY);
+  if (wasActive && wasActive !== SCRATCH && readBuf(Number(wasActive))?.trim()) buffer = Number(wasActive);
+  code.value = readBuf(buffer) ?? BLANK;
+  buildOptions();
+  renderBuffer();
   refreshPorts();
   renderGutter();
   fetch('/api/status', { cache: 'no-store' }).then((r) => r.json()).then((s) => {
     if (!s.arduinoCli) say('A szerver nem találja az arduino-cli-t: a fordítás nem fog menni (lásd tools/firmware.js).', 'error');
   }).catch(() => say('Nem érem el a szervert (/api/status) — a fordításhoz "node tools/serve.js" kell.', 'error'));
 
-  return { setCode };
+  return { setCode, loadRobot, setRobots, onShowChanged };
 }
